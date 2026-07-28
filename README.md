@@ -4,10 +4,26 @@ A drop-in replacement for the manual "rename old file → upload new file" flow
 you're currently doing in FileZilla, built so it's safe to hand to an AI
 agent without fear of it wiping your server.
 
+## Contents
+
+- [Install](#install)
+- [One-time setup per site](#1-one-time-setup-per-site)
+  - [Non-interactive / scripted setup](#non-interactive--scripted-setup)
+  - [Importing from FileZilla](#importing-from-filezilla)
+- [Everyday use](#2-everyday-use)
+- [Custom / dynamic paths](#custom--dynamic-paths)
+- [Download (single file and bulk)](#download-single-file-and-bulk)
+- [Filtering bulk operations](#filtering-bulk-operations-includeexclude)
+- [Safety guarantees](#safety-guarantees)
+- [Using this safely with an AI coding agent](#using-this-safely-with-an-ai-coding-agent)
+- [Known limitation to keep in mind](#known-limitation-to-keep-in-mind)
+
 ## Install
 
+Requires [`uv`](https://docs.astral.sh/uv/getting-started/installation/):
+
 ```bash
-uv tool install git+https://github.com/YOUR_ORG/safe-ftp-deploy
+uv tool install git+https://github.com/vivekkushalch/safe_ftp.git
 ```
 
 This installs a `safe-ftp-deploy` command on your PATH. Works the same way
@@ -215,8 +231,10 @@ interactive prompts — see "Non-interactive / scripted setup" above.
 
 The master password is prompted interactively each run (`getpass`) by
 default, so fully unattended/scheduled automation isn't set up here by
-default — that was intentional, since you mentioned wanting to avoid
-unattended mishaps.
+default — that was intentional, to avoid unattended mishaps. `.ftpconfig`
+(below) and `setup-site --non-interactive` both opt back into unattended
+use deliberately, on a per-directory or per-command basis — the default
+stays interactive unless you explicitly set one of those up.
 
 ### Optional: skip the prompt with `.ftpconfig`
 
