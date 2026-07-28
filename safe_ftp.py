@@ -799,6 +799,61 @@ def _resolve_ftp_password_for_setup(args, imported_password) -> str:
     return getpass.getpass("FTP password: ")
 
 
+def _resolve_required_field(explicit_value, imported_value, field_label, args, prompt_text) -> str:
+    """Resolve a required setup-site field: explicit flag value, else an
+    imported (e.g. FileZilla) value, else an interactive prompt -- or,
+    under --non-interactive, a clear error naming field_label."""
+    if explicit_value:
+        return explicit_value
+    if imported_value:
+        return imported_value
+    if args.non_interactive:
+        raise SystemExit(f"Missing required field for --non-interactive: {field_label}.")
+    return input(prompt_text).strip()
+
+
+def _resolve_port(args, imported_port) -> str:
+    """Resolve the FTP port. Always has a safe default ("21") so it's
+    never required even under --non-interactive."""
+    if args.port:
+        return args.port
+    if imported_port:
+        return imported_port
+    if args.non_interactive:
+        return "21"
+    return input("FTP port [21]: ").strip() or "21"
+
+
+def _resolve_use_tls(args, imported_use_tls) -> bool:
+    """Resolve whether to use FTPS/TLS. Defaults to True if nothing else
+    says otherwise, matching today's interactive default."""
+    if args.use_tls:
+        return True
+    if args.no_tls:
+        return False
+    if imported_use_tls is not None:
+        return imported_use_tls
+    if args.non_interactive:
+        return True
+    use_tls_in = input("Use FTPS/TLS if supported? [Y/n]: ").strip().lower()
+    return use_tls_in != "n"
+
+
+def _resolve_allowed_dirs(args) -> list:
+    """Resolve the allowed_remote_dirs whitelist. Defaults to an empty
+    list (with the existing "no whitelist set" warning printed elsewhere)
+    if nothing else says otherwise."""
+    if args.allowed_dirs is not None:
+        return [d.strip() for d in args.allowed_dirs.split(",") if d.strip()]
+    if args.non_interactive:
+        return []
+    allowed = input(
+        "Comma-separated list of remote directories this site is allowed to touch "
+        "(e.g. /public_html/,/public_html/blog/) [leave blank to allow anywhere -- not recommended]: "
+    ).strip()
+    return [d.strip() for d in allowed.split(",") if d.strip()]
+
+
 def cmd_setup_site(args):
     ftpconfig_existed = os.path.exists(_ftpconfig_path())
     masterpwd_existed = os.path.exists(_masterpwd_path())

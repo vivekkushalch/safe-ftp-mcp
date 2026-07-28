@@ -91,3 +91,88 @@ def test_ftp_password_interactive_falls_back_to_prompt(monkeypatch):
     monkeypatch.setattr(safe_ftp.getpass, "getpass", lambda prompt="": "typed-ftp-password")
     args = _args(non_interactive=False)
     assert safe_ftp._resolve_ftp_password_for_setup(args, imported_password=None) == "typed-ftp-password"
+
+
+def test_required_field_explicit_wins():
+    args = _args(non_interactive=True)
+    assert safe_ftp._resolve_required_field("explicit", "imported", "--host", args, "prompt: ") == "explicit"
+
+
+def test_required_field_falls_back_to_imported():
+    args = _args(non_interactive=True)
+    assert safe_ftp._resolve_required_field(None, "imported", "--host", args, "prompt: ") == "imported"
+
+
+def test_required_field_non_interactive_errors_when_unresolved():
+    args = _args(non_interactive=True)
+    with pytest.raises(SystemExit, match="--host"):
+        safe_ftp._resolve_required_field(None, None, "--host", args, "prompt: ")
+
+
+def test_required_field_interactive_prompts(monkeypatch):
+    monkeypatch.setattr("builtins.input", lambda prompt="": "typed-value")
+    args = _args(non_interactive=False)
+    assert safe_ftp._resolve_required_field(None, None, "--host", args, "prompt: ") == "typed-value"
+
+
+def test_port_flag_wins():
+    args = _args(port="2121")
+    assert safe_ftp._resolve_port(args, imported_port="21") == "2121"
+
+
+def test_port_falls_back_to_imported():
+    args = _args()
+    assert safe_ftp._resolve_port(args, imported_port="2200") == "2200"
+
+
+def test_port_non_interactive_defaults_to_21():
+    args = _args(non_interactive=True)
+    assert safe_ftp._resolve_port(args, imported_port=None) == "21"
+
+
+def test_port_interactive_prompts_with_default(monkeypatch):
+    monkeypatch.setattr("builtins.input", lambda prompt="": "")
+    args = _args(non_interactive=False)
+    assert safe_ftp._resolve_port(args, imported_port=None) == "21"
+
+
+def test_use_tls_flag_wins_over_import():
+    args = _args(use_tls=True)
+    assert safe_ftp._resolve_use_tls(args, imported_use_tls=False) is True
+
+
+def test_no_tls_flag_wins_over_import():
+    args = _args(no_tls=True)
+    assert safe_ftp._resolve_use_tls(args, imported_use_tls=True) is False
+
+
+def test_use_tls_falls_back_to_import():
+    args = _args()
+    assert safe_ftp._resolve_use_tls(args, imported_use_tls=False) is False
+
+
+def test_use_tls_non_interactive_defaults_true():
+    args = _args(non_interactive=True)
+    assert safe_ftp._resolve_use_tls(args, imported_use_tls=None) is True
+
+
+def test_use_tls_interactive_prompts(monkeypatch):
+    monkeypatch.setattr("builtins.input", lambda prompt="": "n")
+    args = _args(non_interactive=False)
+    assert safe_ftp._resolve_use_tls(args, imported_use_tls=None) is False
+
+
+def test_allowed_dirs_flag_parses_csv():
+    args = _args(allowed_dirs="/public_html/,/public_html/blog/")
+    assert safe_ftp._resolve_allowed_dirs(args) == ["/public_html/", "/public_html/blog/"]
+
+
+def test_allowed_dirs_non_interactive_defaults_empty():
+    args = _args(non_interactive=True)
+    assert safe_ftp._resolve_allowed_dirs(args) == []
+
+
+def test_allowed_dirs_interactive_prompts(monkeypatch):
+    monkeypatch.setattr("builtins.input", lambda prompt="": "/public_html/")
+    args = _args(non_interactive=False)
+    assert safe_ftp._resolve_allowed_dirs(args) == ["/public_html/"]
