@@ -699,14 +699,31 @@ def _load_site_or_exit(name: str) -> dict:
     return sites[name]
 
 
+def _resolve_site_name(args) -> str:
+    """Resolve the site name for commands where --name is optional: the
+    explicit CLI value always wins, else fall back to .ftpconfig in the
+    current directory, else fail with a clear message."""
+    if getattr(args, "name", None):
+        return args.name
+    site_name, _ = _read_ftpconfig()
+    if site_name:
+        return site_name
+    raise SystemExit(
+        'No site specified. Pass --name <site>, or run "setup-site --name '
+        '<site>" to set a default for this folder.'
+    )
+
+
 def cmd_deploy(args):
-    site = _load_site_or_exit(args.name)
-    result = deploy_file(args.name, site, args.local, args.remote, execute=args.execute, force=args.force)
+    site_name = _resolve_site_name(args)
+    site = _load_site_or_exit(site_name)
+    result = deploy_file(site_name, site, args.local, args.remote, execute=args.execute, force=args.force)
     _print_result(result, args.json)
 
 
 def cmd_batch_deploy(args):
-    site = _load_site_or_exit(args.name)
+    site_name = _resolve_site_name(args)
+    site = _load_site_or_exit(site_name)
     include = args.include.split(",") if args.include else []
     exclude = args.exclude.split(",") if args.exclude else []
     results = []
@@ -717,7 +734,7 @@ def cmd_batch_deploy(args):
             if not _matches_filters(rel, include, exclude):
                 continue
             remote_full = os.path.join(args.remote_dir, rel).replace(os.sep, "/")
-            results.append(deploy_file(args.name, site, local_full, remote_full,
+            results.append(deploy_file(site_name, site, local_full, remote_full,
                                         execute=args.execute, force=args.force))
     if args.json:
         print(json.dumps(results, indent=2))
@@ -728,13 +745,15 @@ def cmd_batch_deploy(args):
 
 
 def cmd_download(args):
-    site = _load_site_or_exit(args.name)
-    result = download_file(args.name, site, args.remote, args.local, execute=args.execute, force=args.force)
+    site_name = _resolve_site_name(args)
+    site = _load_site_or_exit(site_name)
+    result = download_file(site_name, site, args.remote, args.local, execute=args.execute, force=args.force)
     _print_result(result, args.json)
 
 
 def cmd_batch_download(args):
-    site = _load_site_or_exit(args.name)
+    site_name = _resolve_site_name(args)
+    site = _load_site_or_exit(site_name)
     include = args.include.split(",") if args.include else []
     exclude = args.exclude.split(",") if args.exclude else []
     ftp = _connect(site)
@@ -752,7 +771,7 @@ def cmd_batch_download(args):
         if not _matches_filters(rel, include, exclude):
             continue
         local_full = os.path.join(args.local_dir, rel)
-        results.append(download_file(args.name, site, remote_full, local_full,
+        results.append(download_file(site_name, site, remote_full, local_full,
                                       execute=args.execute, force=args.force))
     if args.json:
         print(json.dumps(results, indent=2))
@@ -763,14 +782,16 @@ def cmd_batch_download(args):
 
 
 def cmd_status(args):
-    site = _load_site_or_exit(args.name)
-    result = check_status(args.name, site, args.remote)
+    site_name = _resolve_site_name(args)
+    site = _load_site_or_exit(site_name)
+    result = check_status(site_name, site, args.remote)
     _print_result(result, args.json)
 
 
 def cmd_list(args):
-    site = _load_site_or_exit(args.name)
-    result = list_remote_dir(args.name, site, args.remote_dir, recursive=args.recursive)
+    site_name = _resolve_site_name(args)
+    site = _load_site_or_exit(site_name)
+    result = list_remote_dir(site_name, site, args.remote_dir, recursive=args.recursive)
     if args.json:
         print(json.dumps(result, indent=2))
         return
@@ -794,8 +815,12 @@ def _print_result(result: dict, as_json: bool):
     print(f"[{status.upper()}] {result.get('message', '')}")
 
 
-def main():
+_NAME_HELP = "Site name. Defaults to the site recorded in ./.ftpconfig for the current directory."
+
+
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Safety-first FTP deploy tool.")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_setup = sub.add_parser("setup-site", help="Add or update an encrypted site profile.")
@@ -803,7 +828,7 @@ def main():
     p_setup.set_defaults(func=cmd_setup_site)
 
     p_deploy = sub.add_parser("deploy", help="Deploy a single file (dry-run unless --execute).")
-    p_deploy.add_argument("--name", required=True)
+    p_deploy.add_argument("--name", help=_NAME_HELP)
     p_deploy.add_argument("--local", required=True)
     p_deploy.add_argument("--remote", required=True)
     p_deploy.add_argument("--execute", action="store_true")
@@ -813,7 +838,7 @@ def main():
     p_deploy.set_defaults(func=cmd_deploy)
 
     p_batch = sub.add_parser("batch-deploy", help="Deploy a whole local folder to a remote folder.")
-    p_batch.add_argument("--name", required=True)
+    p_batch.add_argument("--name", help=_NAME_HELP)
     p_batch.add_argument("--local-dir", required=True)
     p_batch.add_argument("--remote-dir", required=True)
     p_batch.add_argument("--include", help="Comma-separated glob patterns to include, e.g. '*.php,*.css'")
@@ -824,7 +849,7 @@ def main():
     p_batch.set_defaults(func=cmd_batch_deploy)
 
     p_download = sub.add_parser("download", help="Download a single remote file (dry-run unless --execute).")
-    p_download.add_argument("--name", required=True)
+    p_download.add_argument("--name", help=_NAME_HELP)
     p_download.add_argument("--remote", required=True)
     p_download.add_argument("--local", required=True)
     p_download.add_argument("--execute", action="store_true")
@@ -833,7 +858,7 @@ def main():
     p_download.set_defaults(func=cmd_download)
 
     p_bdownload = sub.add_parser("batch-download", help="Download a whole remote folder to a local folder.")
-    p_bdownload.add_argument("--name", required=True)
+    p_bdownload.add_argument("--name", help=_NAME_HELP)
     p_bdownload.add_argument("--remote-dir", required=True)
     p_bdownload.add_argument("--local-dir", required=True)
     p_bdownload.add_argument("--include", help="Comma-separated glob patterns to include")
@@ -844,19 +869,24 @@ def main():
     p_bdownload.set_defaults(func=cmd_batch_download)
 
     p_status = sub.add_parser("status", help="Check drift status of a remote file without deploying.")
-    p_status.add_argument("--name", required=True)
+    p_status.add_argument("--name", help=_NAME_HELP)
     p_status.add_argument("--remote", required=True)
     p_status.add_argument("--json", action="store_true")
     p_status.set_defaults(func=cmd_status)
 
     p_list = sub.add_parser("list", help="List a remote directory's contents (read-only).")
-    p_list.add_argument("--name", required=True)
+    p_list.add_argument("--name", help=_NAME_HELP)
     p_list.add_argument("--remote-dir", required=True)
     p_list.add_argument("--recursive", action="store_true",
                          help="Walk subdirectories too (files only, no size/date info).")
     p_list.add_argument("--json", action="store_true")
     p_list.set_defaults(func=cmd_list)
 
+    return parser
+
+
+def main():
+    parser = _build_parser()
     args = parser.parse_args()
     args.func(args)
 

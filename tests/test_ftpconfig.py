@@ -1,3 +1,7 @@
+import argparse
+
+import pytest
+
 import safe_ftp
 
 
@@ -40,3 +44,24 @@ def test_get_master_password_falls_back_to_getpass_prompt(tmp_path, monkeypatch)
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(safe_ftp.getpass, "getpass", lambda prompt="": "typed-password")
     assert safe_ftp._get_master_password("Master password: ") == "typed-password"
+
+
+def test_resolve_site_name_explicit_name_wins(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".ftpconfig").write_text("configsite\npw\n", encoding="utf-8")
+    args = argparse.Namespace(name="clisite")
+    assert safe_ftp._resolve_site_name(args) == "clisite"
+
+
+def test_resolve_site_name_falls_back_to_ftpconfig(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".ftpconfig").write_text("configsite\npw\n", encoding="utf-8")
+    args = argparse.Namespace(name=None)
+    assert safe_ftp._resolve_site_name(args) == "configsite"
+
+
+def test_resolve_site_name_errors_when_neither_present(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    args = argparse.Namespace(name=None)
+    with pytest.raises(SystemExit):
+        safe_ftp._resolve_site_name(args)
