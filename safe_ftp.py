@@ -109,6 +109,11 @@ def _read_ftpconfig():
     return site_name, password
 
 
+def _write_ftpconfig(site_name: str, master_password: str) -> None:
+    with open(_ftpconfig_path(), "w", encoding="utf-8") as f:
+        f.write(f"{site_name}\n{master_password}\n")
+
+
 def _ensure_config_dir():
     os.makedirs(CONFIG_DIR, exist_ok=True)
 
@@ -661,6 +666,9 @@ def _get_master_password(prompt):
 
 
 def cmd_setup_site(args):
+    ftpconfig_existed = os.path.exists(_ftpconfig_path())
+    masterpwd_existed = os.path.exists(_masterpwd_path())
+
     master_password = _get_master_password("Master password to encrypt/decrypt your site credentials: ")
     sites = _load_all_sites(master_password) if os.path.exists(CREDS_FILE) else {}
 
@@ -689,6 +697,10 @@ def cmd_setup_site(args):
     if not allowed_dirs:
         print("WARNING: no allowed_remote_dirs set for this site -- deploys can target any path. "
               "Consider re-running setup-site to restrict this.")
+
+    _write_ftpconfig(args.name, master_password)
+    if not ftpconfig_existed and masterpwd_existed:
+        print("Migrated your master password into .ftpconfig — you can delete .masterpwd now.")
 
 
 def _load_site_or_exit(name: str) -> dict:
