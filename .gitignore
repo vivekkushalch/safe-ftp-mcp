@@ -7,3 +7,6 @@ safe_ftp.new.exe
 dist/
 build/
 *.spec
+.venv/
+*.egg-info/
+.pytest_cache/
