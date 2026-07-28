@@ -57,6 +57,7 @@ USAGE
 
 import argparse
 import base64
+import binascii
 import fnmatch
 import getpass
 import hashlib
@@ -64,6 +65,7 @@ import json
 import os
 import sys
 import tempfile
+import xml.etree.ElementTree as ET
 from datetime import datetime
 from ftplib import FTP, FTP_TLS, error_perm
 
@@ -112,6 +114,88 @@ def _read_ftpconfig():
 def _write_ftpconfig(site_name: str, master_password: str) -> None:
     with open(_ftpconfig_path(), "w", encoding="utf-8") as f:
         f.write(f"{site_name}\n{master_password}\n")
+
+
+# FileZilla's public ServerProtocol enum, as of recent 3.x releases. Not
+# verified against a real export -- an unrecognized code leaves use_tls as
+# None (falls through to a flag/prompt/default) rather than guessing.
+_FILEZILLA_TLS_PROTOCOLS = {
+    0: False,  # FTP (plain)
+    5: True,   # FTPS - implicit TLS
+    6: True,   # FTPES - explicit TLS
+    7: False,  # INSECURE_FTP
+}
+_FILEZILLA_SFTP_PROTOCOL = 1
+
+
+def _parse_filezilla_export(path: str) -> dict:
+    """Parse a FileZilla Site Manager XML export containing exactly one
+    <Server> entry. Returns a dict with "host", "port", "username",
+    "password", "use_tls" -- each None if the export didn't supply it (or,
+    for use_tls, if the protocol code wasn't recognized)."""
+    try:
+        tree = ET.parse(path)
+    except (OSError, ET.ParseError) as e:
+        raise SystemExit(f"Could not read FileZilla export '{path}': {e}")
+
+    servers = tree.getroot().findall(".//Server")
+    if len(servers) == 0:
+        raise SystemExit(f"No <Server> entries found in FileZilla export '{path}'.")
+    if len(servers) > 1:
+        raise SystemExit(
+            f"FileZilla export '{path}' contains {len(servers)} sites -- "
+            "trim it down to exactly one <Server> entry first."
+        )
+    server = servers[0]
+
+    def _text(tag):
+        el = server.find(tag)
+        return el.text.strip() if el is not None and el.text else None
+
+    host = _text("Host")
+    port = _text("Port")
+    username = _text("User")
+
+    password = None
+    pass_el = server.find("Pass")
+    if pass_el is not None and pass_el.text:
+        encoding = pass_el.get("encoding", "plain")
+        if encoding == "plain":
+            password = pass_el.text
+        elif encoding == "base64":
+            try:
+                password = base64.b64decode(pass_el.text).decode("utf-8")
+            except (binascii.Error, UnicodeDecodeError) as e:
+                raise SystemExit(f"Could not decode base64 password in FileZilla export '{path}': {e}")
+        elif encoding == "crypt":
+            raise SystemExit(
+                f"FileZilla export '{path}' has a master-password-protected "
+                "encryption on its saved password -- re-export without a "
+                "FileZilla master password, or supply "
+                "--ftp-password/SAFE_FTP_FTP_PASSWORD manually."
+            )
+        else:
+            raise SystemExit(
+                f"Unsupported password encoding '{encoding}' in FileZilla "
+                f"export '{path}'. Only plain and base64 are supported."
+            )
+
+    use_tls = None
+    protocol_text = _text("Protocol")
+    if protocol_text is not None:
+        try:
+            protocol = int(protocol_text)
+        except ValueError:
+            protocol = None
+        if protocol == _FILEZILLA_SFTP_PROTOCOL:
+            raise SystemExit(
+                f"FileZilla export '{path}' uses SFTP, which safe-ftp-deploy "
+                "doesn't support (FTP/FTPS only via ftplib)."
+            )
+        if protocol in _FILEZILLA_TLS_PROTOCOLS:
+            use_tls = _FILEZILLA_TLS_PROTOCOLS[protocol]
+
+    return {"host": host, "port": port, "username": username, "password": password, "use_tls": use_tls}
 
 
 def _ensure_config_dir():
