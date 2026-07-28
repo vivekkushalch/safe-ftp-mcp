@@ -729,10 +729,9 @@ def list_remote_dir(site_name: str, site: dict, remote_dir: str, recursive: bool
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
-def _get_master_password(prompt):
-    """Resolve the master password: .ftpconfig (line 2) in the current
-    directory, else legacy .masterpwd in the current directory, else an
-    interactive getpass prompt."""
+def _read_master_password_from_files():
+    """Check .ftpconfig (line 2) then legacy .masterpwd, both in the
+    current directory. Returns the password, or None if neither has one."""
     _, ftpconfig_password = _read_ftpconfig()
     if ftpconfig_password:
         print(f"(using master password from {_ftpconfig_path()})", file=sys.stderr)
@@ -746,7 +745,58 @@ def _get_master_password(prompt):
             print(f"(using master password from {masterpwd_path})", file=sys.stderr)
             return pw
 
+    return None
+
+
+def _get_master_password(prompt):
+    """Resolve the master password: .ftpconfig (line 2) in the current
+    directory, else legacy .masterpwd in the current directory, else an
+    interactive getpass prompt."""
+    found = _read_master_password_from_files()
+    if found:
+        return found
     return getpass.getpass(prompt)
+
+
+def _resolve_master_password_for_setup(args) -> str:
+    """Resolve the master password for setup-site: --master-password flag,
+    else SAFE_FTP_MASTER_PASSWORD env var, else existing .ftpconfig/
+    .masterpwd in the current directory, else an interactive prompt --
+    or, under --non-interactive, a clear error instead of prompting."""
+    if args.master_password:
+        return args.master_password
+    if os.environ.get("SAFE_FTP_MASTER_PASSWORD"):
+        return os.environ["SAFE_FTP_MASTER_PASSWORD"]
+    found = _read_master_password_from_files()
+    if found:
+        return found
+    if args.non_interactive:
+        raise SystemExit(
+            "Missing required field for --non-interactive: master password. "
+            "Pass --master-password, set SAFE_FTP_MASTER_PASSWORD, or ensure "
+            ".ftpconfig/.masterpwd already exists in this directory."
+        )
+    return getpass.getpass("Master password to encrypt/decrypt your site credentials: ")
+
+
+def _resolve_ftp_password_for_setup(args, imported_password) -> str:
+    """Resolve the FTP account password for setup-site: --ftp-password
+    flag, else SAFE_FTP_FTP_PASSWORD env var, else a --from-filezilla
+    import, else an interactive prompt -- or, under --non-interactive, a
+    clear error instead of prompting."""
+    if args.ftp_password:
+        return args.ftp_password
+    if os.environ.get("SAFE_FTP_FTP_PASSWORD"):
+        return os.environ["SAFE_FTP_FTP_PASSWORD"]
+    if imported_password:
+        return imported_password
+    if args.non_interactive:
+        raise SystemExit(
+            "Missing required field for --non-interactive: FTP password. "
+            "Pass --ftp-password, set SAFE_FTP_FTP_PASSWORD, or supply it "
+            "via --from-filezilla."
+        )
+    return getpass.getpass("FTP password: ")
 
 
 def cmd_setup_site(args):
