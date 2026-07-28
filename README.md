@@ -43,6 +43,50 @@ Credentials are stored encrypted (AES via Fernet, key derived from your master
 password with PBKDF2-SHA256, 480k iterations) in `~/.safe_ftp_deploy/sites.enc`.
 The password itself never touches disk.
 
+### Non-interactive / scripted setup
+
+Every field can be supplied without prompts, for automation or bulk setup:
+
+```bash
+safe-ftp-deploy setup-site --name mysite --non-interactive \
+  --host ftp.example.com --port 21 --username myuser \
+  --ftp-password "$FTP_PW" --master-password "$MASTER_PW" \
+  --use-tls --allowed-dirs "/public_html/,/public_html/blog/"
+```
+
+`--non-interactive` requires every field to resolve from a flag, an
+environment variable, or `--from-filezilla` (below) — it errors out
+listing exactly what's missing rather than silently prompting or guessing.
+
+- `--ftp-password` can also come from `SAFE_FTP_FTP_PASSWORD`.
+- `--master-password` can also come from `SAFE_FTP_MASTER_PASSWORD`, or
+  from an existing `.ftpconfig`/`.masterpwd` already in this directory.
+- `--use-tls`/`--no-tls` and `--allowed-dirs` have safe defaults (TLS on,
+  empty whitelist) if omitted, so they're never required.
+- Environment variables are preferred over flags for passwords when you
+  have the choice — flags land in shell history and process listings,
+  env vars don't.
+
+### Importing from FileZilla
+
+If you already have the site saved in FileZilla, point `setup-site` at a
+Site Manager XML export instead of typing the connection details:
+
+```bash
+safe-ftp-deploy setup-site --name mysite --from-filezilla ./export.xml
+```
+
+The export must contain exactly one `<Server>` entry — trim a multi-site
+export down first. This pre-fills host, port, username, password, and TLS;
+you're still prompted for the allowed-dirs whitelist unless you also pass
+`--allowed-dirs` (or `--non-interactive`, in which case it defaults to
+empty with the usual warning). Any explicit flag (`--host`, `--use-tls`,
+etc.) overrides the imported value for that field.
+
+Passwords protected by a FileZilla *master* password (`encoding="crypt"`
+in the export) can't be decrypted by this tool — re-export without one, or
+pass `--ftp-password`/`SAFE_FTP_FTP_PASSWORD` yourself.
+
 ## 2. Everyday use
 
 `--name` is optional after `setup-site` has run once in this folder — it
@@ -162,6 +206,10 @@ If you want, this can also be wrapped as a single custom MCP tool later, but
 running it as a subprocess the agent calls is the simplest and safest starting
 point — you don't need to build or trust a new MCP server just to get this
 benefit.
+
+If the agent also needs to provision a *new* site (not just deploy to an
+existing one), `setup-site --non-interactive` avoids it having to fake
+interactive prompts — see "Non-interactive / scripted setup" above.
 
 ## Known limitation to keep in mind
 
