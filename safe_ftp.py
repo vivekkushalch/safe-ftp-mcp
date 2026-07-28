@@ -858,20 +858,21 @@ def cmd_setup_site(args):
     ftpconfig_existed = os.path.exists(_ftpconfig_path())
     masterpwd_existed = os.path.exists(_masterpwd_path())
 
-    master_password = _get_master_password("Master password to encrypt/decrypt your site credentials: ")
+    imported = {"host": None, "port": None, "username": None, "password": None, "use_tls": None}
+    if args.from_filezilla:
+        imported = _parse_filezilla_export(args.from_filezilla)
+
+    master_password = _resolve_master_password_for_setup(args)
     sites = _load_all_sites(master_password) if os.path.exists(CREDS_FILE) else {}
 
-    host = input("FTP host (e.g. ftp.yourdomain.com): ").strip()
-    port = input("FTP port [21]: ").strip() or "21"
-    username = input("FTP username: ").strip()
-    password = getpass.getpass("FTP password: ")
-    use_tls_in = input("Use FTPS/TLS if supported? [Y/n]: ").strip().lower()
-    use_tls = use_tls_in != "n"
-    allowed = input(
-        "Comma-separated list of remote directories this site is allowed to touch "
-        "(e.g. /public_html/,/public_html/blog/) [leave blank to allow anywhere -- not recommended]: "
-    ).strip()
-    allowed_dirs = [d.strip() for d in allowed.split(",") if d.strip()]
+    host = _resolve_required_field(args.host, imported["host"], "--host", args,
+                                    "FTP host (e.g. ftp.yourdomain.com): ")
+    port = _resolve_port(args, imported["port"])
+    username = _resolve_required_field(args.username, imported["username"], "--username", args,
+                                        "FTP username: ")
+    password = _resolve_ftp_password_for_setup(args, imported["password"])
+    use_tls = _resolve_use_tls(args, imported["use_tls"])
+    allowed_dirs = _resolve_allowed_dirs(args)
 
     sites[args.name] = {
         "host": host,
@@ -1026,6 +1027,24 @@ def _build_parser() -> argparse.ArgumentParser:
 
     p_setup = sub.add_parser("setup-site", help="Add or update an encrypted site profile.")
     p_setup.add_argument("--name", required=True)
+    p_setup.add_argument(
+        "--non-interactive", action="store_true",
+        help="Skip interactive prompts; every field must come from a flag, "
+             "environment variable, or --from-filezilla.",
+    )
+    p_setup.add_argument(
+        "--from-filezilla", metavar="PATH",
+        help="Path to a FileZilla Site Manager XML export containing exactly one site.",
+    )
+    p_setup.add_argument("--host")
+    p_setup.add_argument("--port")
+    p_setup.add_argument("--username")
+    p_setup.add_argument("--ftp-password", help="FTP account password. Can also be set via SAFE_FTP_FTP_PASSWORD.")
+    p_setup.add_argument("--master-password", help="Master password. Can also be set via SAFE_FTP_MASTER_PASSWORD.")
+    tls_group = p_setup.add_mutually_exclusive_group()
+    tls_group.add_argument("--use-tls", action="store_true")
+    tls_group.add_argument("--no-tls", action="store_true")
+    p_setup.add_argument("--allowed-dirs", help="Comma-separated list of allowed remote directories.")
     p_setup.set_defaults(func=cmd_setup_site)
 
     p_deploy = sub.add_parser("deploy", help="Deploy a single file (dry-run unless --execute).")
