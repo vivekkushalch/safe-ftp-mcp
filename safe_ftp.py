@@ -81,11 +81,32 @@ CREDS_FILE = os.path.join(CONFIG_DIR, "sites.enc")
 SALT_FILE = os.path.join(CONFIG_DIR, "salt.bin")
 STATE_FILE = os.path.join(CONFIG_DIR, "state.json")  # no secrets in here, just hashes
 
-# Optional: put the master password in this file (next to the script, plain
-# text, one line) to skip the interactive getpass prompt. This trades away
-# the "password never touches disk" guarantee described above -- only use it
-# if you've accepted that tradeoff. Never commit or back this file up anywhere.
-MASTERPWD_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".masterpwd")
+# .ftpconfig (site name + master password) and legacy .masterpwd (password
+# only) are both resolved from the current working directory -- the tool is
+# one shared global install now, so cwd is what makes these project-specific.
+# This trades away the "password never touches disk" guarantee -- only use
+# .ftpconfig/.masterpwd if you've accepted that tradeoff. Never commit or
+# back these files up anywhere.
+def _ftpconfig_path() -> str:
+    return os.path.join(os.getcwd(), ".ftpconfig")
+
+
+def _masterpwd_path() -> str:
+    return os.path.join(os.getcwd(), ".masterpwd")
+
+
+def _read_ftpconfig():
+    """Return (site_name, master_password) from .ftpconfig in the current
+    directory. Either or both are None if the file or a given line is
+    missing/empty."""
+    path = _ftpconfig_path()
+    if not os.path.exists(path):
+        return None, None
+    with open(path, "r", encoding="utf-8") as f:
+        lines = f.read().splitlines()
+    site_name = lines[0].strip() if len(lines) >= 1 and lines[0].strip() else None
+    password = lines[1].strip() if len(lines) >= 2 and lines[1].strip() else None
+    return site_name, password
 
 
 def _ensure_config_dir():
@@ -620,14 +641,22 @@ def list_remote_dir(site_name: str, site: dict, remote_dir: str, recursive: bool
 # CLI
 # ---------------------------------------------------------------------------
 def _get_master_password(prompt):
-    """Read the master password from .masterpwd next to this script if present,
-    else fall back to the interactive getpass prompt."""
-    if os.path.exists(MASTERPWD_FILE):
-        with open(MASTERPWD_FILE, "r", encoding="utf-8") as f:
+    """Resolve the master password: .ftpconfig (line 2) in the current
+    directory, else legacy .masterpwd in the current directory, else an
+    interactive getpass prompt."""
+    _, ftpconfig_password = _read_ftpconfig()
+    if ftpconfig_password:
+        print(f"(using master password from {_ftpconfig_path()})", file=sys.stderr)
+        return ftpconfig_password
+
+    masterpwd_path = _masterpwd_path()
+    if os.path.exists(masterpwd_path):
+        with open(masterpwd_path, "r", encoding="utf-8") as f:
             pw = f.read().strip()
         if pw:
-            print(f"(using master password from {MASTERPWD_FILE})", file=sys.stderr)
+            print(f"(using master password from {masterpwd_path})", file=sys.stderr)
             return pw
+
     return getpass.getpass(prompt)
 
 
