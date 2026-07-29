@@ -70,3 +70,31 @@ def test_deploy_expected_hash_defaults_to_none():
     parser = safe_ftp._build_parser()
     args = parser.parse_args(["deploy", "--local", "a", "--remote", "b"])
     assert args.expected_hash is None
+
+
+def test_list_new_flags_parse():
+    parser = safe_ftp._build_parser()
+    args = parser.parse_args([
+        "list", "--remote-dir", "/public_html", "--type", "file",
+        "--include", "*.php", "--exclude", "*.log", "--limit", "10",
+        "--sort", "size", "--reverse", "--max-depth", "2",
+    ])
+    assert args.type == "file"
+    assert args.include == "*.php"
+    assert args.exclude == "*.log"
+    assert args.limit == 10
+    assert args.sort == "size"
+    assert args.reverse is True
+    assert args.max_depth == 2
+
+
+def test_list_new_flags_have_sane_defaults():
+    parser = safe_ftp._build_parser()
+    args = parser.parse_args(["list", "--remote-dir", "/public_html"])
+    assert args.type == "all"
+    assert args.include is None
+    assert args.exclude is None
+    assert args.limit is None
+    assert args.sort == "name"
+    assert args.reverse is False
+    assert args.max_depth is None

@@ -702,8 +702,37 @@ def check_status(site_name: str, site: dict, remote_path: str) -> dict:
             ftp.close()
 
 
-def list_remote_dir(site_name: str, site: dict, remote_dir: str, recursive: bool = False) -> dict:
-    """List a remote directory's contents. Read-only -- makes no changes."""
+def _sort_entries(entries: list, sort_by: str, reverse: bool) -> list:
+    """Sort entries (dicts with 'name'/'type'/'size'/'modify' keys) by name
+    (default -- directories first, then alphabetical, matching the
+    listing's long-standing default order), size, or modified date. Missing
+    size/modify values sort first."""
+    if sort_by == "size":
+        key = lambda e: (e.get("size") is None, int(e["size"]) if e.get("size") is not None else 0)
+    elif sort_by == "modified":
+        key = lambda e: (e.get("modify") is None, e.get("modify") or "")
+    else:
+        key = lambda e: (e.get("type") != "dir", e.get("name", "").lower())
+    return sorted(entries, key=key, reverse=reverse)
+
+
+def list_remote_dir(site_name: str, site: dict, remote_dir: str, recursive: bool = False,
+                     entry_type: str = "all", include: list = None, exclude: list = None,
+                     limit: int = None, sort_by: str = "name", reverse: bool = False,
+                     max_depth: int = None) -> dict:
+    """List a remote directory's contents. Read-only -- makes no changes.
+
+    entry_type: "file", "dir", or "all" (default) -- filters by entry type.
+    include/exclude: lists of glob patterns matched against each entry's
+        name, same semantics as _matches_filters.
+    limit: caps the number of entries returned; if the true count is
+        higher, result["truncated"] is True and result["total_matched"]
+        holds the real count.
+    sort_by: "name" (default), "size", or "modified".
+    reverse: reverses the sort order.
+    max_depth: only meaningful with recursive=True; caps how many
+        directory levels deep to walk.
+    """
     result = {"site": site_name, "remote_dir": remote_dir, "entries": []}
 
     if not _is_within_allowed_dirs(remote_dir, site.get("allowed_remote_dirs", [])):
@@ -714,41 +743,61 @@ def list_remote_dir(site_name: str, site: dict, remote_dir: str, recursive: bool
         )
         return result
 
+    include = include or []
+    exclude = exclude or []
+    flat = False
+
     ftp = _connect(site)
     try:
         if recursive:
-            for full_path in _walk_remote_dir(ftp, remote_dir):
-                result["entries"].append({"path": full_path, "type": "file"})
-            result["status"] = "ok"
-            result["message"] = f"{len(result['entries'])} file(s) found under {remote_dir} (recursive)."
-            return result
+            listed = []
+            for full_path, facts in _walk_remote_dir(ftp, remote_dir, max_depth=max_depth):
+                name = os.path.basename(full_path)
+                if not _matches_filters(name, include, exclude):
+                    continue
+                listed.append({
+                    "path": full_path,
+                    "name": name,
+                    "type": facts.get("type", "file"),
+                    "size": facts.get("size"),
+                    "modify": facts.get("modify"),
+                })
+        else:
+            try:
+                mlsd_entries = list(ftp.mlsd(remote_dir))
+            except Exception:
+                flat = True
+                mlsd_entries = [(os.path.basename(n), {}) for n in ftp.nlst(remote_dir)]
 
-        try:
-            entries = list(ftp.mlsd(remote_dir))
-        except Exception:
-            # Server doesn't support MLSD -- fall back to a flat NLST with no
-            # type/size/modify info.
-            names = ftp.nlst(remote_dir)
-            for n in sorted(names, key=lambda x: os.path.basename(x).lower()):
-                result["entries"].append({"name": os.path.basename(n), "type": "?"})
+            listed = []
+            for name, facts in mlsd_entries:
+                if name in (".", ".."):
+                    continue
+                if not _matches_filters(name, include, exclude):
+                    continue
+                listed.append({
+                    "name": name,
+                    "type": facts.get("type", "?"),
+                    "size": facts.get("size"),
+                    "modify": facts.get("modify"),
+                })
+
+        listed = [e for e in listed if entry_type == "all" or e["type"] == entry_type]
+        listed = _sort_entries(listed, sort_by, reverse)
+
+        total_matched = len(listed)
+        if limit is not None and total_matched > limit:
+            result["truncated"] = True
+            result["total_matched"] = total_matched
+            listed = listed[:limit]
+
+        result["entries"] = listed
+        if flat:
             result["status"] = "ok_flat"
             result["message"] = "Server doesn't support MLSD -- showing a flat listing with no type/size/date."
-            return result
-
-        listed = []
-        for name, facts in entries:
-            if name in (".", ".."):
-                continue
-            listed.append({
-                "name": name,
-                "type": facts.get("type", "?"),
-                "size": facts.get("size"),
-                "modify": facts.get("modify"),
-            })
-        listed.sort(key=lambda e: (e["type"] != "dir", e["name"].lower()))
-        result["entries"] = listed
-        result["status"] = "ok"
-        result["message"] = f"{len(listed)} entr{'y' if len(listed) == 1 else 'ies'} in {remote_dir}."
+        else:
+            result["status"] = "ok"
+            result["message"] = f"{len(listed)} entr{'y' if len(listed) == 1 else 'ies'} in {remote_dir}."
         return result
     except error_perm as e:
         result["status"] = "error"
@@ -1037,20 +1086,33 @@ def cmd_status(args):
 def cmd_list(args):
     site_name = _resolve_site_name(args)
     site = _load_site_or_exit(site_name)
-    result = list_remote_dir(site_name, site, args.remote_dir, recursive=args.recursive)
+    include = args.include.split(",") if args.include else []
+    exclude = args.exclude.split(",") if args.exclude else []
+    result = list_remote_dir(
+        site_name, site, args.remote_dir,
+        recursive=args.recursive,
+        entry_type=args.type,
+        include=include,
+        exclude=exclude,
+        limit=args.limit,
+        sort_by=args.sort,
+        reverse=args.reverse,
+        max_depth=args.max_depth,
+    )
     if args.json:
         print(json.dumps(result, indent=2))
         return
     status = result.get("status", "unknown")
     print(f"[{status.upper()}] {result.get('message', '')}")
+    if result.get("truncated"):
+        print(f"  (showing {len(result.get('entries', []))} of {result.get('total_matched')} matched "
+              f"-- use --limit to adjust)")
     for e in result.get("entries", []):
-        if "path" in e:
-            print(f"  {e['path']}")
-        else:
-            tag = "DIR " if e.get("type") == "dir" else "file"
-            size = e.get("size")
-            size_s = f"{size:>10}" if size is not None else " " * 10
-            print(f"  [{tag}] {size_s}  {e['name']}")
+        tag = "DIR " if e.get("type") == "dir" else "file"
+        size = e.get("size")
+        size_s = f"{size:>10}" if size is not None else " " * 10
+        label = e.get("path", e.get("name", ""))
+        print(f"  [{tag}] {size_s}  {label}")
 
 
 def _print_result(result: dict, as_json: bool):
@@ -1146,8 +1208,19 @@ def _build_parser() -> argparse.ArgumentParser:
     p_list = sub.add_parser("list", help="List a remote directory's contents (read-only).")
     p_list.add_argument("--name", help=_NAME_HELP)
     p_list.add_argument("--remote-dir", required=True)
-    p_list.add_argument("--recursive", action="store_true",
-                         help="Walk subdirectories too (files only, no size/date info).")
+    p_list.add_argument("--recursive", action="store_true", help="Walk subdirectories too.")
+    p_list.add_argument("--type", choices=["file", "dir", "all"], default="all",
+                         help="Filter by entry type. Default: all.")
+    p_list.add_argument("--include", help="Comma-separated glob patterns to include, matched against entry names.")
+    p_list.add_argument("--exclude", help="Comma-separated glob patterns to exclude, matched against entry names.")
+    p_list.add_argument("--limit", type=int, help="Cap the number of entries returned.")
+    p_list.add_argument("--sort", choices=["name", "size", "modified"], default="name",
+                         help="Sort order. Default: name (directories first).")
+    p_list.add_argument("--reverse", action="store_true", help="Reverse the sort order.")
+    p_list.add_argument(
+        "--max-depth", type=int,
+        help="Only meaningful with --recursive: cap how many directory levels deep to walk.",
+    )
     p_list.add_argument("--json", action="store_true")
     p_list.set_defaults(func=cmd_list)
 
