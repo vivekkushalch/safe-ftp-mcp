@@ -45,10 +45,28 @@ def _isolate_global_config(tmp_path, monkeypatch):
     monkeypatch.setattr(safe_ftp, "SALT_FILE", str(config_dir / "salt.bin"))
 
 
+def _stub_connect(monkeypatch, succeed=True):
+    """Stub the real network call cmd_setup_site now makes to test the
+    connection. succeed=False simulates a connection failure."""
+
+    class _FakeFTP:
+        def quit(self):
+            pass
+
+    if succeed:
+        monkeypatch.setattr(safe_ftp, "_connect", lambda site: _FakeFTP())
+    else:
+        def _raise(site):
+            raise OSError("Connection refused")
+
+        monkeypatch.setattr(safe_ftp, "_connect", _raise)
+
+
 def test_setup_site_writes_ftpconfig(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     _isolate_global_config(tmp_path, monkeypatch)
     _stub_setup_site_io(monkeypatch, master_password="hunter2")
+    _stub_connect(monkeypatch)
 
     safe_ftp.cmd_setup_site(_setup_args())
 
@@ -61,6 +79,7 @@ def test_setup_site_migrates_legacy_masterpwd(tmp_path, monkeypatch, capsys):
     _isolate_global_config(tmp_path, monkeypatch)
     (tmp_path / ".masterpwd").write_text("legacy-pw\n", encoding="utf-8")
     _stub_setup_site_io(monkeypatch, master_password="unused")
+    _stub_connect(monkeypatch)
 
     safe_ftp.cmd_setup_site(_setup_args())
 
@@ -74,6 +93,7 @@ def test_setup_site_no_migration_message_when_ftpconfig_already_existed(tmp_path
     _isolate_global_config(tmp_path, monkeypatch)
     (tmp_path / ".ftpconfig").write_text("oldsite\nhunter2\n", encoding="utf-8")
     _stub_setup_site_io(monkeypatch, master_password="hunter2")
+    _stub_connect(monkeypatch)
 
     safe_ftp.cmd_setup_site(_setup_args())
 
@@ -91,6 +111,7 @@ def test_setup_site_fully_non_interactive(tmp_path, monkeypatch):
     monkeypatch.setattr(
         safe_ftp.getpass, "getpass", lambda prompt="": (_ for _ in ()).throw(AssertionError("should not prompt"))
     )
+    _stub_connect(monkeypatch)
 
     safe_ftp.cmd_setup_site(_setup_args(
         non_interactive=True,
@@ -145,6 +166,7 @@ def test_setup_site_from_filezilla_standalone_interactive(tmp_path, monkeypatch)
     # all come from the FileZilla export.
     monkeypatch.setattr("builtins.input", lambda prompt="": "/public_html/")
     monkeypatch.setattr(safe_ftp.getpass, "getpass", lambda prompt="": "hunter2")
+    _stub_connect(monkeypatch)
 
     safe_ftp.cmd_setup_site(_setup_args(from_filezilla=str(export_path)))
 
@@ -171,6 +193,7 @@ def test_setup_site_explicit_flag_overrides_filezilla_import(tmp_path, monkeypat
 """,
         encoding="utf-8",
     )
+    _stub_connect(monkeypatch)
 
     safe_ftp.cmd_setup_site(_setup_args(
         non_interactive=True,
@@ -185,3 +208,31 @@ def test_setup_site_explicit_flag_overrides_filezilla_import(tmp_path, monkeypat
     assert sites["mysite"]["host"] == "override.example.com"
     assert sites["mysite"]["username"] == "importeduser"
     assert sites["mysite"]["password"] == "overridepass"
+
+
+def test_setup_site_prints_connection_success(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    _isolate_global_config(tmp_path, monkeypatch)
+    _stub_setup_site_io(monkeypatch, master_password="hunter2")
+    _stub_connect(monkeypatch, succeed=True)
+
+    safe_ftp.cmd_setup_site(_setup_args())
+
+    out = capsys.readouterr().out
+    assert "Connection test" in out
+    assert "OK" in out
+    assert "WARNING: connection test failed" not in out
+
+
+def test_setup_site_warns_on_connection_failure_but_still_saves(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    _isolate_global_config(tmp_path, monkeypatch)
+    _stub_setup_site_io(monkeypatch, master_password="hunter2")
+    _stub_connect(monkeypatch, succeed=False)
+
+    safe_ftp.cmd_setup_site(_setup_args())
+
+    out = capsys.readouterr().out
+    assert "WARNING: connection test failed" in out
+    sites = safe_ftp._load_all_sites("hunter2")
+    assert "mysite" in sites

@@ -295,6 +295,22 @@ def _connect(site: dict) -> FTP:
     return ftp
 
 
+def _test_site_connection(site: dict) -> tuple:
+    """Attempt to connect to the site with its saved credentials. Returns
+    (ok, message); never raises. Used by setup-site to give immediate
+    feedback on whether the credentials actually work, without blocking
+    the save on failure."""
+    try:
+        ftp = _connect(site)
+    except Exception as e:
+        return False, f"Could not connect: {e}"
+    try:
+        ftp.quit()
+    except Exception:
+        ftp.close()
+    return True, f"Connected to {site['host']}:{site.get('port', 21)}."
+
+
 def _remote_file_exists(ftp: FTP, remote_path: str) -> bool:
     directory, filename = os.path.split(remote_path)
     try:
@@ -884,6 +900,14 @@ def cmd_setup_site(args):
     }
     _save_all_sites(sites, master_password)
     print(f"Saved encrypted credentials for site '{args.name}' to {CREDS_FILE}")
+
+    connection_ok, connection_message = _test_site_connection(sites[args.name])
+    if connection_ok:
+        print(f"Connection test: OK - {connection_message}")
+    else:
+        print(f"WARNING: connection test failed - {connection_message} "
+              "(site was still saved -- check the details if this is unexpected)")
+
     if not allowed_dirs:
         print("WARNING: no allowed_remote_dirs set for this site -- deploys can target any path. "
               "Consider re-running setup-site to restrict this.")
