@@ -1123,14 +1123,31 @@ def cmd_list(args):
 
 _NAME_HELP = "Site name. Defaults to the site recorded in ./.ftpconfig for the current directory."
 
+_JSON_HELP = "Print machine-readable JSON instead of a formatted summary."
+
+_WORKFLOW_EPILOG = """\
+Typical flow:
+  1. One-time per site:      safe-ftp-deploy setup-site --name mysite
+  2. See what would happen:  safe-ftp-deploy deploy --local ./index.php --remote /public_html/index.php
+  3. Review the dry-run output above, then actually deploy:
+                              safe-ftp-deploy deploy --local ./index.php --remote /public_html/index.php --execute
+
+Every command is a dry run unless you pass --execute. Nothing is ever deleted --
+the only "destructive" action is renaming the old file to a timestamped backup.
+"""
+
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Safety-first FTP deploy tool.")
+    parser = argparse.ArgumentParser(
+        description="Safety-first FTP deploy tool.",
+        epilog=_WORKFLOW_EPILOG,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_setup = sub.add_parser("setup-site", help="Add or update an encrypted site profile.")
-    p_setup.add_argument("--name", required=True)
+    p_setup.add_argument("--name", required=True, help="Site name to save these credentials under.")
     p_setup.add_argument(
         "--non-interactive", action="store_true",
         help="Skip interactive prompts; every field must come from a flag, "
@@ -1140,22 +1157,25 @@ def _build_parser() -> argparse.ArgumentParser:
         "--from-filezilla", metavar="PATH",
         help="Path to a FileZilla Site Manager XML export containing exactly one site.",
     )
-    p_setup.add_argument("--host")
-    p_setup.add_argument("--port")
-    p_setup.add_argument("--username")
+    p_setup.add_argument("--host", help="FTP host, e.g. ftp.yourdomain.com.")
+    p_setup.add_argument("--port", help="FTP port. Default: 21.")
+    p_setup.add_argument("--username", help="FTP username.")
     p_setup.add_argument("--ftp-password", help="FTP account password. Can also be set via SAFE_FTP_FTP_PASSWORD.")
     p_setup.add_argument("--master-password", help="Master password. Can also be set via SAFE_FTP_MASTER_PASSWORD.")
     tls_group = p_setup.add_mutually_exclusive_group()
-    tls_group.add_argument("--use-tls", action="store_true")
-    tls_group.add_argument("--no-tls", action="store_true")
+    tls_group.add_argument("--use-tls", action="store_true",
+                            help="Force FTPS (TLS). Mutually exclusive with --no-tls.")
+    tls_group.add_argument("--no-tls", action="store_true",
+                            help="Force plain FTP (no TLS). Mutually exclusive with --use-tls.")
     p_setup.add_argument("--allowed-dirs", help="Comma-separated list of allowed remote directories.")
     p_setup.set_defaults(func=cmd_setup_site)
 
     p_deploy = sub.add_parser("deploy", help="Deploy a single file (dry-run unless --execute).")
     p_deploy.add_argument("--name", help=_NAME_HELP)
-    p_deploy.add_argument("--local", required=True)
-    p_deploy.add_argument("--remote", required=True)
-    p_deploy.add_argument("--execute", action="store_true")
+    p_deploy.add_argument("--local", required=True, help="Path to the local file to deploy.")
+    p_deploy.add_argument("--remote", required=True, help="Destination path on the server.")
+    p_deploy.add_argument("--execute", action="store_true",
+                           help="Actually perform the deploy. Without this, only a dry-run plan is shown.")
     p_deploy.add_argument("--force", action="store_true",
                            help="Override drift protection. Use only after manually reviewing the server file.")
     p_deploy.add_argument(
@@ -1163,49 +1183,59 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Hash from a prior download; deploy fails with stale_download if the remote file no "
              "longer matches it, instead of silently overwriting a newer change.",
     )
-    p_deploy.add_argument("--json", action="store_true")
+    p_deploy.add_argument("--json", action="store_true", help=_JSON_HELP)
     p_deploy.set_defaults(func=cmd_deploy)
 
     p_batch = sub.add_parser("batch-deploy", help="Deploy a whole local folder to a remote folder.")
     p_batch.add_argument("--name", help=_NAME_HELP)
-    p_batch.add_argument("--local-dir", required=True)
-    p_batch.add_argument("--remote-dir", required=True)
+    p_batch.add_argument("--local-dir", required=True, help="Local folder to deploy from.")
+    p_batch.add_argument("--remote-dir", required=True, help="Destination folder on the server.")
     p_batch.add_argument("--include", help="Comma-separated glob patterns to include, e.g. '*.php,*.css'")
     p_batch.add_argument("--exclude", help="Comma-separated glob patterns to exclude, e.g. 'node_modules/*,*.log'")
-    p_batch.add_argument("--execute", action="store_true")
-    p_batch.add_argument("--force", action="store_true")
-    p_batch.add_argument("--json", action="store_true")
+    p_batch.add_argument("--execute", action="store_true",
+                          help="Actually perform the deploy. Without this, only a dry-run plan is shown.")
+    p_batch.add_argument(
+        "--force", action="store_true",
+        help="Override drift protection for every file. Use only after manually reviewing the server files.",
+    )
+    p_batch.add_argument("--json", action="store_true", help=_JSON_HELP)
     p_batch.set_defaults(func=cmd_batch_deploy)
 
     p_download = sub.add_parser("download", help="Download a single remote file (dry-run unless --execute).")
     p_download.add_argument("--name", help=_NAME_HELP)
-    p_download.add_argument("--remote", required=True)
-    p_download.add_argument("--local", required=True)
-    p_download.add_argument("--execute", action="store_true")
-    p_download.add_argument("--force", action="store_true")
-    p_download.add_argument("--json", action="store_true")
+    p_download.add_argument("--remote", required=True, help="Path to the remote file to download.")
+    p_download.add_argument("--local", required=True, help="Destination path on your local machine.")
+    p_download.add_argument("--execute", action="store_true",
+                             help="Actually perform the download. Without this, only a dry-run plan is shown.")
+    p_download.add_argument("--force", action="store_true",
+                             help="Override drift protection. Use only after manually reviewing the local file.")
+    p_download.add_argument("--json", action="store_true", help=_JSON_HELP)
     p_download.set_defaults(func=cmd_download)
 
     p_bdownload = sub.add_parser("batch-download", help="Download a whole remote folder to a local folder.")
     p_bdownload.add_argument("--name", help=_NAME_HELP)
-    p_bdownload.add_argument("--remote-dir", required=True)
-    p_bdownload.add_argument("--local-dir", required=True)
+    p_bdownload.add_argument("--remote-dir", required=True, help="Remote folder to download from.")
+    p_bdownload.add_argument("--local-dir", required=True, help="Destination folder on your local machine.")
     p_bdownload.add_argument("--include", help="Comma-separated glob patterns to include")
     p_bdownload.add_argument("--exclude", help="Comma-separated glob patterns to exclude")
-    p_bdownload.add_argument("--execute", action="store_true")
-    p_bdownload.add_argument("--force", action="store_true")
-    p_bdownload.add_argument("--json", action="store_true")
+    p_bdownload.add_argument("--execute", action="store_true",
+                              help="Actually perform the download. Without this, only a dry-run plan is shown.")
+    p_bdownload.add_argument(
+        "--force", action="store_true",
+        help="Override drift protection for every file. Use only after manually reviewing the local files.",
+    )
+    p_bdownload.add_argument("--json", action="store_true", help=_JSON_HELP)
     p_bdownload.set_defaults(func=cmd_batch_download)
 
     p_status = sub.add_parser("status", help="Check drift status of a remote file without deploying.")
     p_status.add_argument("--name", help=_NAME_HELP)
-    p_status.add_argument("--remote", required=True)
-    p_status.add_argument("--json", action="store_true")
+    p_status.add_argument("--remote", required=True, help="Remote path to check.")
+    p_status.add_argument("--json", action="store_true", help=_JSON_HELP)
     p_status.set_defaults(func=cmd_status)
 
     p_list = sub.add_parser("list", help="List a remote directory's contents (read-only).")
     p_list.add_argument("--name", help=_NAME_HELP)
-    p_list.add_argument("--remote-dir", required=True)
+    p_list.add_argument("--remote-dir", required=True, help="Remote directory to list.")
     p_list.add_argument("--recursive", action="store_true", help="Walk subdirectories too.")
     p_list.add_argument("--type", choices=["file", "dir", "all"], default="all",
                          help="Filter by entry type. Default: all.")
@@ -1219,7 +1249,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--max-depth", type=int,
         help="Only meaningful with --recursive: cap how many directory levels deep to walk.",
     )
-    p_list.add_argument("--json", action="store_true")
+    p_list.add_argument("--json", action="store_true", help=_JSON_HELP)
     p_list.set_defaults(func=cmd_list)
 
     return parser

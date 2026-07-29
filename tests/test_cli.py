@@ -98,3 +98,23 @@ def test_list_new_flags_have_sane_defaults():
     assert args.sort == "name"
     assert args.reverse is False
     assert args.max_depth is None
+
+
+def test_every_flag_has_help_text():
+    parser = safe_ftp._build_parser()
+    missing = []
+    for sub_parser in parser._subparsers._group_actions[0].choices.values():
+        for action in sub_parser._actions:
+            if action.option_strings and action.help is None:
+                missing.append((sub_parser.prog, action.option_strings))
+    assert missing == []
+
+
+def test_top_level_help_shows_workflow_epilog(capsys):
+    parser = safe_ftp._build_parser()
+    with pytest.raises(SystemExit) as exc_info:
+        parser.parse_args(["--help"])
+    assert exc_info.value.code == 0
+    out = capsys.readouterr().out
+    assert "setup-site --name mysite" in out
+    assert "--execute" in out
