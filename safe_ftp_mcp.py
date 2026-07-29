@@ -184,3 +184,82 @@ def _setup_site_impl(name: str = "", host: str = None, port: str = None, usernam
         return result
     except SystemExit as e:
         return {"status": "error", "message": str(e)}
+
+
+def _build_mcp_server():
+    """Registers each _X_impl as an MCP tool. Imports the mcp SDK lazily --
+    this is the only function in this module that requires it installed.
+
+    Note: the installed mcp SDK (2.0.0+) renamed FastMCP to MCPServer,
+    moved to mcp.server.mcpserver -- the constructor and @tool() decorator
+    usage are otherwise unchanged from the older FastMCP API."""
+    from mcp.server.mcpserver import MCPServer
+
+    mcp_server = MCPServer("safe-ftp-deploy")
+
+    @mcp_server.tool()
+    def deploy(local: str, remote: str, name: str = None, execute: bool = False,
+               force: bool = False, expected_hash: str = None) -> dict:
+        """Deploy a single local file to a remote path. Dry-run unless
+        execute=True -- always review the dry-run result before setting
+        execute=True on a real call."""
+        return _deploy_impl(local=local, remote=remote, name=name, execute=execute,
+                             force=force, expected_hash=expected_hash)
+
+    @mcp_server.tool()
+    def batch_deploy(local_dir: str, remote_dir: str, name: str = None, include: str = None,
+                      exclude: str = None, execute: bool = False, force: bool = False) -> dict:
+        """Deploy every file under local_dir to its mirrored path under
+        remote_dir (filtered by comma-separated include/exclude glob
+        patterns). Dry-run unless execute=True."""
+        return _batch_deploy_impl(local_dir=local_dir, remote_dir=remote_dir, name=name,
+                                   include=include, exclude=exclude, execute=execute, force=force)
+
+    @mcp_server.tool()
+    def download(remote: str, local: str, name: str = None, execute: bool = False,
+                 force: bool = False) -> dict:
+        """Download a single remote file to a local path. Dry-run unless execute=True."""
+        return _download_impl(remote=remote, local=local, name=name, execute=execute, force=force)
+
+    @mcp_server.tool()
+    def batch_download(remote_dir: str, local_dir: str, name: str = None, include: str = None,
+                        exclude: str = None, execute: bool = False, force: bool = False) -> dict:
+        """Download every file under remote_dir to its mirrored path under
+        local_dir (filtered by comma-separated include/exclude glob
+        patterns). Dry-run unless execute=True."""
+        return _batch_download_impl(remote_dir=remote_dir, local_dir=local_dir, name=name,
+                                     include=include, exclude=exclude, execute=execute, force=force)
+
+    @mcp_server.tool()
+    def status(remote: str, name: str = None) -> dict:
+        """Check drift status of a remote file without changing anything."""
+        return _status_impl(remote=remote, name=name)
+
+    @mcp_server.tool()
+    def list_remote(remote_dir: str, name: str = None, recursive: bool = False,
+                     entry_type: str = "all", include: str = None, exclude: str = None,
+                     limit: int = None, sort_by: str = "name", reverse: bool = False,
+                     max_depth: int = None) -> dict:
+        """List a remote directory's contents. Read-only."""
+        return _list_remote_impl(remote_dir=remote_dir, name=name, recursive=recursive,
+                                  entry_type=entry_type, include=include, exclude=exclude,
+                                  limit=limit, sort_by=sort_by, reverse=reverse, max_depth=max_depth)
+
+    @mcp_server.tool()
+    def setup_site(name: str, host: str = None, port: str = None, username: str = None,
+                    ftp_password: str = None, master_password: str = None, use_tls: bool = None,
+                    allowed_dirs: str = None, from_filezilla: str = None) -> dict:
+        """Provision or update an encrypted site profile. Every field must
+        resolve from a parameter, an environment variable
+        (SAFE_FTP_FTP_PASSWORD / SAFE_FTP_MASTER_PASSWORD), an existing
+        .ftpconfig, or from_filezilla -- there's no terminal to prompt on."""
+        return _setup_site_impl(name=name, host=host, port=port, username=username,
+                                 ftp_password=ftp_password, master_password=master_password,
+                                 use_tls=use_tls, allowed_dirs=allowed_dirs,
+                                 from_filezilla=from_filezilla)
+
+    return mcp_server
+
+
+def run_server():
+    _build_mcp_server().run()

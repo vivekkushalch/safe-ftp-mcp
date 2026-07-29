@@ -1336,7 +1336,19 @@ def _build_parser() -> argparse.ArgumentParser:
     p_list.add_argument("--json", action="store_true", help=_JSON_HELP)
     p_list.set_defaults(func=cmd_list)
 
+    p_mcp = sub.add_parser(
+        "mcp",
+        help="Start the MCP server (stdio transport) so an AI agent can call these "
+             "operations as tools instead of shelling out to the CLI.",
+    )
+    p_mcp.set_defaults(func=cmd_mcp)
+
     return parser
+
+
+def cmd_mcp(args):
+    import safe_ftp_mcp
+    safe_ftp_mcp.run_server()
 
 
 def main():
