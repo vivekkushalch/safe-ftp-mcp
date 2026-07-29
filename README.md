@@ -204,28 +204,49 @@ safe-ftp-deploy batch-deploy \
 
 ## Using this safely with an AI coding agent
 
-Don't give an agent raw FTP access or an unrestricted FTP MCP server. Instead:
+Don't give an agent raw FTP access or an unrestricted FTP MCP server.
+Instead, this tool decides *how* a deploy happens — dry-run first, drift
+protection, the directory whitelist — regardless of what the agent asks
+for. There are two ways to hand it to an agent:
 
-1. Let the agent decide *what* changed and *what* should be deployed.
-2. Have the agent invoke this script as a subprocess with `--json`, e.g.:
-   ```bash
-   safe-ftp-deploy deploy --local ./index.php --remote /public_html/index.php --json
-   ```
-   (leave off `--execute` so the agent gets a dry-run plan first)
-3. Show the JSON result to yourself (or have the agent summarize it) before
-   ever adding `--execute`.
-4. This script — not the agent — enforces the whitelist, drift protection,
-   and no-delete guarantee, so even if the agent is confidently wrong about
-   something, the underlying safety checks still apply.
+### Option 1: MCP server (recommended)
 
-If you want, this can also be wrapped as a single custom MCP tool later, but
-running it as a subprocess the agent calls is the simplest and safest starting
-point — you don't need to build or trust a new MCP server just to get this
-benefit.
+```bash
+safe-ftp-deploy mcp
+```
+
+Starts an MCP server (stdio transport) exposing seven tools —
+`deploy`, `batch_deploy`, `download`, `batch_download`, `status`,
+`list_remote`, `setup_site` — mirroring the CLI subcommands 1:1. Every
+write tool defaults to `execute=False`, identical to the CLI's
+`--execute` requirement: the agent must explicitly opt in to actually
+changing anything. Point your agent's MCP config at it, e.g.:
+
+```json
+{"mcpServers": {"safe-ftp-deploy": {"command": "safe-ftp-deploy", "args": ["mcp"]}}}
+```
+
+A skill teaching an agent the required dry-run-then-confirm workflow
+ships in this repo at [`skill/safe-ftp-deploy/SKILL.md`](skill/safe-ftp-deploy/SKILL.md).
+Copy or symlink it into `~/.claude/skills/safe-ftp-deploy/` (or a
+project's own `.claude/skills/`) so an agent picks it up automatically.
+
+### Option 2: CLI subprocess
+
+If MCP isn't available, have the agent invoke the CLI directly with
+`--json` so it gets structured output instead of scraping text:
+
+```bash
+safe-ftp-deploy deploy --local ./index.php --remote /public_html/index.php --json
+```
+
+(leave off `--execute` so the agent gets a dry-run plan first, then show
+the result to yourself before ever adding `--execute`)
 
 If the agent also needs to provision a *new* site (not just deploy to an
 existing one), `setup-site --non-interactive` avoids it having to fake
-interactive prompts — see "Non-interactive / scripted setup" above.
+interactive prompts — see "Non-interactive / scripted setup" above. The
+MCP `setup_site` tool works the same way, non-interactively by design.
 
 ## Known limitation to keep in mind
 
