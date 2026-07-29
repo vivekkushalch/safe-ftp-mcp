@@ -72,8 +72,17 @@ from ftplib import FTP, FTP_TLS, error_perm
 from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from rich.console import Console
+from rich.markdown import Markdown
+
+import safe_ftp_format as fmt
 
 __version__ = "0.1.0"
+
+# Fixed width keeps output deterministic across real terminals and
+# captured/piped output (tests, CI) alike -- color/styling still auto-adapts
+# to whether stdout is a real terminal.
+_console = Console(width=100)
 
 # ---------------------------------------------------------------------------
 # File locations (all local, next to this script's working directory)
@@ -967,22 +976,24 @@ def cmd_setup_site(args):
         "allowed_remote_dirs": allowed_dirs,
     }
     _save_all_sites(sites, master_password)
-    print(f"Saved encrypted credentials for site '{args.name}' to {CREDS_FILE}")
 
     connection_ok, connection_message = _test_site_connection(sites[args.name])
-    if connection_ok:
-        print(f"Connection test: OK - {connection_message}")
-    else:
-        print(f"WARNING: connection test failed - {connection_message} "
-              "(site was still saved -- check the details if this is unexpected)")
 
-    if not allowed_dirs:
-        print("WARNING: no allowed_remote_dirs set for this site -- deploys can target any path. "
-              "Consider re-running setup-site to restrict this.")
-
+    migrated = not ftpconfig_existed and masterpwd_existed
     _write_ftpconfig(args.name, master_password)
-    if not ftpconfig_existed and masterpwd_existed:
-        print("Migrated your master password into .ftpconfig — you can delete .masterpwd now.")
+
+    result = {
+        "site": args.name,
+        "host": host,
+        "port": port,
+        "use_tls": use_tls,
+        "connection_ok": connection_ok,
+        "connection_message": connection_message,
+        "allowed_remote_dirs": allowed_dirs,
+        "migrated_from_masterpwd": migrated,
+        "creds_file": CREDS_FILE,
+    }
+    _console.print(Markdown(fmt.format_setup_site_markdown(result)))
 
 
 def _load_site_or_exit(name: str) -> dict:
@@ -1013,7 +1024,10 @@ def cmd_deploy(args):
     site = _load_site_or_exit(site_name)
     result = deploy_file(site_name, site, args.local, args.remote, execute=args.execute, force=args.force,
                           expected_hash=args.expected_hash)
-    _print_result(result, args.json)
+    if args.json:
+        print(json.dumps(result, indent=2))
+    else:
+        _console.print(Markdown(fmt.format_deploy_markdown(result)))
 
 
 def cmd_batch_deploy(args):
@@ -1034,16 +1048,17 @@ def cmd_batch_deploy(args):
     if args.json:
         print(json.dumps(results, indent=2))
     else:
-        print(f"{len(results)} file(s) matched filters.")
-        for r in results:
-            _print_result(r, False)
+        _console.print(Markdown(fmt.format_batch_deploy_markdown(results, args.local_dir, args.remote_dir)))
 
 
 def cmd_download(args):
     site_name = _resolve_site_name(args)
     site = _load_site_or_exit(site_name)
     result = download_file(site_name, site, args.remote, args.local, execute=args.execute, force=args.force)
-    _print_result(result, args.json)
+    if args.json:
+        print(json.dumps(result, indent=2))
+    else:
+        _console.print(Markdown(fmt.format_download_markdown(result)))
 
 
 def cmd_batch_download(args):
@@ -1071,16 +1086,17 @@ def cmd_batch_download(args):
     if args.json:
         print(json.dumps(results, indent=2))
     else:
-        print(f"{len(results)} file(s) matched filters.")
-        for r in results:
-            _print_result(r, False)
+        _console.print(Markdown(fmt.format_batch_download_markdown(results, args.remote_dir, args.local_dir)))
 
 
 def cmd_status(args):
     site_name = _resolve_site_name(args)
     site = _load_site_or_exit(site_name)
     result = check_status(site_name, site, args.remote)
-    _print_result(result, args.json)
+    if args.json:
+        print(json.dumps(result, indent=2))
+    else:
+        _console.print(Markdown(fmt.format_status_markdown(result)))
 
 
 def cmd_list(args):
@@ -1101,26 +1117,8 @@ def cmd_list(args):
     )
     if args.json:
         print(json.dumps(result, indent=2))
-        return
-    status = result.get("status", "unknown")
-    print(f"[{status.upper()}] {result.get('message', '')}")
-    if result.get("truncated"):
-        print(f"  (showing {len(result.get('entries', []))} of {result.get('total_matched')} matched "
-              f"-- use --limit to adjust)")
-    for e in result.get("entries", []):
-        tag = "DIR " if e.get("type") == "dir" else "file"
-        size = e.get("size")
-        size_s = f"{size:>10}" if size is not None else " " * 10
-        label = e.get("path", e.get("name", ""))
-        print(f"  [{tag}] {size_s}  {label}")
-
-
-def _print_result(result: dict, as_json: bool):
-    if as_json:
-        print(json.dumps(result, indent=2))
-        return
-    status = result.get("status", "unknown")
-    print(f"[{status.upper()}] {result.get('message', '')}")
+    else:
+        _console.print(Markdown(fmt.format_list_remote_markdown(result)))
 
 
 _NAME_HELP = "Site name. Defaults to the site recorded in ./.ftpconfig for the current directory."

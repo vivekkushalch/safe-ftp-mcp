@@ -5,6 +5,7 @@ description = "Safety-first FTP deploy tool with drift detection and a no-delete
 requires-python = ">=3.9"
 dependencies = [
     "cryptography>=41.0.0",
+    "rich>=13.0.0",
 ]
 
 [project.scripts]
@@ -15,7 +16,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-py-modules = ["safe_ftp"]
+py-modules = ["safe_ftp", "safe_ftp_format"]
 
 [dependency-groups]
 dev = ["pytest>=8.0.0"]
