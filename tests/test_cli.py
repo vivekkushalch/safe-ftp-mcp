@@ -58,3 +58,15 @@ def test_setup_site_use_tls_and_no_tls_are_mutually_exclusive():
     parser = safe_ftp._build_parser()
     with pytest.raises(SystemExit):
         parser.parse_args(["setup-site", "--name", "mysite", "--use-tls", "--no-tls"])
+
+
+def test_deploy_accepts_expected_hash_flag():
+    parser = safe_ftp._build_parser()
+    args = parser.parse_args(["deploy", "--local", "a", "--remote", "b", "--expected-hash", "abc123"])
+    assert args.expected_hash == "abc123"
+
+
+def test_deploy_expected_hash_defaults_to_none():
+    parser = safe_ftp._build_parser()
+    args = parser.parse_args(["deploy", "--local", "a", "--remote", "b"])
+    assert args.expected_hash is None

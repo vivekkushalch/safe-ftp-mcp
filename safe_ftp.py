@@ -402,7 +402,7 @@ def _walk_remote_dir(ftp: FTP, remote_dir: str):
 # Core safe-deploy logic
 # ---------------------------------------------------------------------------
 def deploy_file(site_name: str, site: dict, local_path: str, remote_path: str,
-                 execute: bool, force: bool = False) -> dict:
+                 execute: bool, force: bool = False, expected_hash: str = None) -> dict:
     """
     Perform (or simulate) the backup-rename-then-upload flow for one file.
     Returns a structured result dict -- never raises for "expected" problems,
@@ -450,6 +450,18 @@ def deploy_file(site_name: str, site: dict, local_path: str, remote_path: str,
             if current_remote_hash == local_hash:
                 result["status"] = "no_change"
                 result["message"] = "Local and remote files are already identical. Nothing to do."
+                return result
+
+            if expected_hash is not None and current_remote_hash != expected_hash and not force:
+                result["status"] = "stale_download"
+                result["message"] = (
+                    "The file on the server has changed since you downloaded it "
+                    "(current remote hash doesn't match --expected-hash). Re-download "
+                    "the current version before deploying your edit, or re-run with "
+                    "--force once you're sure it's safe to overwrite."
+                )
+                result["expected_hash"] = expected_hash
+                result["current_remote_hash"] = current_remote_hash
                 return result
 
             if last_known is not None and current_remote_hash != last_known["hash"] and not force:
@@ -569,6 +581,7 @@ def download_file(site_name: str, site: dict, remote_path: str, local_path: str,
         tmp_remote_copy = _download_to_temp(ftp, remote_path)
         try:
             remote_hash = _sha256_of_file(tmp_remote_copy)
+            result["hash"] = remote_hash
 
             local_exists = os.path.exists(local_path)
             if local_exists:
@@ -943,7 +956,8 @@ def _resolve_site_name(args) -> str:
 def cmd_deploy(args):
     site_name = _resolve_site_name(args)
     site = _load_site_or_exit(site_name)
-    result = deploy_file(site_name, site, args.local, args.remote, execute=args.execute, force=args.force)
+    result = deploy_file(site_name, site, args.local, args.remote, execute=args.execute, force=args.force,
+                          expected_hash=args.expected_hash)
     _print_result(result, args.json)
 
 
@@ -1078,6 +1092,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p_deploy.add_argument("--execute", action="store_true")
     p_deploy.add_argument("--force", action="store_true",
                            help="Override drift protection. Use only after manually reviewing the server file.")
+    p_deploy.add_argument(
+        "--expected-hash",
+        help="Hash from a prior download; deploy fails with stale_download if the remote file no "
+             "longer matches it, instead of silently overwriting a newer change.",
+    )
     p_deploy.add_argument("--json", action="store_true")
     p_deploy.set_defaults(func=cmd_deploy)
 
