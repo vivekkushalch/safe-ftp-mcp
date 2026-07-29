@@ -84,6 +84,24 @@ __version__ = "0.1.0"
 # to whether stdout is a real terminal.
 _console = Console(width=100)
 
+
+def _transfer_progress(description: str, total):
+    """Returns a rich Progress instance configured for a single file
+    transfer, plus its task id. total=None renders an indeterminate
+    display (no percentage) when the server didn't report a size."""
+    from rich.progress import BarColumn, DownloadColumn, Progress, TimeRemainingColumn, TransferSpeedColumn
+
+    progress = Progress(
+        "[progress.description]{task.description}",
+        BarColumn(),
+        DownloadColumn(),
+        TransferSpeedColumn(),
+        TimeRemainingColumn(),
+        console=_console,
+    )
+    task_id = progress.add_task(description, total=total)
+    return progress, task_id
+
 # ---------------------------------------------------------------------------
 # File locations (all local, next to this script's working directory)
 # ---------------------------------------------------------------------------
@@ -330,12 +348,31 @@ def _remote_file_exists(ftp: FTP, remote_path: str) -> bool:
     return filename in names
 
 
-def _download_to_temp(ftp: FTP, remote_path: str) -> str:
-    """Download remote_path to a local temp file and return its path."""
+def _download_to_temp(ftp: FTP, remote_path: str, progress_label: str = None) -> str:
+    """Download remote_path to a local temp file and return its path. If
+    progress_label is given, shows a rich progress bar while downloading
+    (total size from the FTP SIZE command when the server supports it --
+    falls back to an indeterminate display otherwise)."""
     fd, tmp_path = tempfile.mkstemp(prefix="ftpdeploy_")
     os.close(fd)
-    with open(tmp_path, "wb") as f:
-        ftp.retrbinary(f"RETR {remote_path}", f.write)
+
+    if progress_label is None:
+        with open(tmp_path, "wb") as f:
+            ftp.retrbinary(f"RETR {remote_path}", f.write)
+        return tmp_path
+
+    try:
+        total = ftp.size(remote_path)
+    except Exception:
+        total = None
+
+    progress, task_id = _transfer_progress(progress_label, total)
+    with progress:
+        with open(tmp_path, "wb") as f:
+            def _on_chunk(chunk):
+                f.write(chunk)
+                progress.update(task_id, advance=len(chunk))
+            ftp.retrbinary(f"RETR {remote_path}", _on_chunk)
     return tmp_path
 
 
@@ -417,7 +454,8 @@ def _walk_remote_dir(ftp: FTP, remote_dir: str, max_depth=None, _depth=1):
 # Core safe-deploy logic
 # ---------------------------------------------------------------------------
 def deploy_file(site_name: str, site: dict, local_path: str, remote_path: str,
-                 execute: bool, force: bool = False, expected_hash: str = None) -> dict:
+                 execute: bool, force: bool = False, expected_hash: str = None,
+                 show_progress: bool = False) -> dict:
     """
     Perform (or simulate) the backup-rename-then-upload flow for one file.
     Returns a structured result dict -- never raises for "expected" problems,
@@ -525,8 +563,17 @@ def deploy_file(site_name: str, site: dict, local_path: str, remote_path: str,
         if exists:
             ftp.rename(remote_path, backup_path)
 
-        with open(local_path, "rb") as f:
-            ftp.storbinary(f"STOR {remote_path}", f)
+        if show_progress:
+            local_size = os.path.getsize(local_path)
+            progress, task_id = _transfer_progress(f"Uploading {os.path.basename(local_path)}", local_size)
+            with progress:
+                def _on_chunk(chunk):
+                    progress.update(task_id, advance=len(chunk))
+                with open(local_path, "rb") as f:
+                    ftp.storbinary(f"STOR {remote_path}", f, callback=_on_chunk)
+        else:
+            with open(local_path, "rb") as f:
+                ftp.storbinary(f"STOR {remote_path}", f)
 
         # Verify upload by re-downloading and hashing -- don't just trust it worked
         tmp_check = _download_to_temp(ftp, remote_path)
@@ -565,7 +612,7 @@ def deploy_file(site_name: str, site: dict, local_path: str, remote_path: str,
 
 
 def download_file(site_name: str, site: dict, remote_path: str, local_path: str,
-                    execute: bool, force: bool = False) -> dict:
+                    execute: bool, force: bool = False, show_progress: bool = False) -> dict:
     """
     Download a remote file to a local path, backing up any existing local
     file first (mirror image of deploy_file's upload safety). Never deletes
@@ -593,7 +640,8 @@ def download_file(site_name: str, site: dict, remote_path: str, local_path: str,
             result["message"] = f"Remote file does not exist: {remote_path}"
             return result
 
-        tmp_remote_copy = _download_to_temp(ftp, remote_path)
+        progress_label = f"Downloading {remote_path}" if show_progress else None
+        tmp_remote_copy = _download_to_temp(ftp, remote_path, progress_label=progress_label)
         try:
             remote_hash = _sha256_of_file(tmp_remote_copy)
             result["hash"] = remote_hash
@@ -1023,7 +1071,7 @@ def cmd_deploy(args):
     site_name = _resolve_site_name(args)
     site = _load_site_or_exit(site_name)
     result = deploy_file(site_name, site, args.local, args.remote, execute=args.execute, force=args.force,
-                          expected_hash=args.expected_hash)
+                          expected_hash=args.expected_hash, show_progress=not args.json)
     if args.json:
         print(json.dumps(result, indent=2))
     else:
@@ -1054,7 +1102,8 @@ def cmd_batch_deploy(args):
 def cmd_download(args):
     site_name = _resolve_site_name(args)
     site = _load_site_or_exit(site_name)
-    result = download_file(site_name, site, args.remote, args.local, execute=args.execute, force=args.force)
+    result = download_file(site_name, site, args.remote, args.local, execute=args.execute, force=args.force,
+                            show_progress=not args.json)
     if args.json:
         print(json.dumps(result, indent=2))
     else:
