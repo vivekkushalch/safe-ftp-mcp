@@ -374,18 +374,23 @@ def _matches_filters(rel_path: str, include: list, exclude: list) -> bool:
     return True
 
 
-def _walk_remote_dir(ftp: FTP, remote_dir: str):
+def _walk_remote_dir(ftp: FTP, remote_dir: str, max_depth=None, _depth=1):
     """
-    Recursively yield remote file paths under remote_dir using MLSD (works on
-    Hostinger and most modern FTP servers). Falls back to non-recursive NLST
-    if MLSD isn't supported.
+    Recursively yield (full_path, facts) tuples for files under remote_dir
+    using MLSD (works on Hostinger and most modern FTP servers). Falls back
+    to non-recursive NLST (facts == {}) if MLSD isn't supported.
+
+    max_depth caps how many directory levels deep to recurse (None =
+    unlimited). remote_dir's own immediate children are depth 1, so
+    max_depth=1 yields only remote_dir's direct file children with no
+    recursion into subdirectories.
     """
     try:
         entries = list(ftp.mlsd(remote_dir))
     except Exception:
-        # Fallback: flat listing only, treat everything as a file
+        # Fallback: flat listing only, treat everything as a file with no facts
         for name in ftp.nlst(remote_dir):
-            yield name
+            yield name, {}
         return
 
     for name, facts in entries:
@@ -393,9 +398,10 @@ def _walk_remote_dir(ftp: FTP, remote_dir: str):
             continue
         full_path = f"{remote_dir.rstrip('/')}/{name}"
         if facts.get("type") == "dir":
-            yield from _walk_remote_dir(ftp, full_path)
+            if max_depth is None or _depth < max_depth:
+                yield from _walk_remote_dir(ftp, full_path, max_depth=max_depth, _depth=_depth + 1)
         else:
-            yield full_path
+            yield full_path, facts
 
 
 # ---------------------------------------------------------------------------
@@ -998,7 +1004,7 @@ def cmd_batch_download(args):
     exclude = args.exclude.split(",") if args.exclude else []
     ftp = _connect(site)
     try:
-        remote_files = list(_walk_remote_dir(ftp, args.remote_dir))
+        remote_files = [path for path, _facts in _walk_remote_dir(ftp, args.remote_dir)]
     finally:
         try:
             ftp.quit()
