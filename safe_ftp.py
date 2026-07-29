@@ -1052,12 +1052,14 @@ def _load_site_or_exit(name: str) -> dict:
     return sites[name]
 
 
-def _resolve_site_name(args) -> str:
-    """Resolve the site name for commands where --name is optional: the
-    explicit CLI value always wins, else fall back to .ftpconfig in the
-    current directory, else fail with a clear message."""
-    if getattr(args, "name", None):
-        return args.name
+def _resolve_site_name_value(explicit_name) -> str:
+    """Resolve a site name from an explicit value (may be None/falsy): the
+    explicit value always wins, else fall back to .ftpconfig in the current
+    directory, else fail with a clear message. Shared by the CLI's
+    _resolve_site_name(args) and the MCP tool layer, which has no argparse
+    Namespace to read from."""
+    if explicit_name:
+        return explicit_name
     site_name, _ = _read_ftpconfig()
     if site_name:
         return site_name
@@ -1065,6 +1067,11 @@ def _resolve_site_name(args) -> str:
         'No site specified. Pass --name <site>, or run "setup-site --name '
         '<site>" to set a default for this folder.'
     )
+
+
+def _resolve_site_name(args) -> str:
+    """Resolve the site name for commands where --name is optional."""
+    return _resolve_site_name_value(getattr(args, "name", None))
 
 
 def cmd_deploy(args):
@@ -1078,21 +1085,35 @@ def cmd_deploy(args):
         _console.print(Markdown(fmt.format_deploy_markdown(result)))
 
 
+def batch_deploy_files(site_name: str, site: dict, local_dir: str, remote_dir: str,
+                        include: list = None, exclude: list = None,
+                        execute: bool = False, force: bool = False) -> list:
+    """Walk local_dir, deploy_file() each matching file to its mirrored path
+    under remote_dir. Shared core for the CLI's batch-deploy and the MCP
+    batch_deploy tool."""
+    include = include or []
+    exclude = exclude or []
+    results = []
+    for root, _dirs, files in os.walk(local_dir):
+        for fname in files:
+            local_full = os.path.join(root, fname)
+            rel = os.path.relpath(local_full, local_dir).replace(os.sep, "/")
+            if not _matches_filters(rel, include, exclude):
+                continue
+            remote_full = os.path.join(remote_dir, rel).replace(os.sep, "/")
+            results.append(deploy_file(site_name, site, local_full, remote_full,
+                                        execute=execute, force=force))
+    return results
+
+
 def cmd_batch_deploy(args):
     site_name = _resolve_site_name(args)
     site = _load_site_or_exit(site_name)
     include = args.include.split(",") if args.include else []
     exclude = args.exclude.split(",") if args.exclude else []
-    results = []
-    for root, _dirs, files in os.walk(args.local_dir):
-        for fname in files:
-            local_full = os.path.join(root, fname)
-            rel = os.path.relpath(local_full, args.local_dir).replace(os.sep, "/")
-            if not _matches_filters(rel, include, exclude):
-                continue
-            remote_full = os.path.join(args.remote_dir, rel).replace(os.sep, "/")
-            results.append(deploy_file(site_name, site, local_full, remote_full,
-                                        execute=args.execute, force=args.force))
+    results = batch_deploy_files(site_name, site, args.local_dir, args.remote_dir,
+                                  include=include, exclude=exclude,
+                                  execute=args.execute, force=args.force)
     if args.json:
         print(json.dumps(results, indent=2))
     else:
@@ -1110,14 +1131,17 @@ def cmd_download(args):
         _console.print(Markdown(fmt.format_download_markdown(result)))
 
 
-def cmd_batch_download(args):
-    site_name = _resolve_site_name(args)
-    site = _load_site_or_exit(site_name)
-    include = args.include.split(",") if args.include else []
-    exclude = args.exclude.split(",") if args.exclude else []
+def batch_download_files(site_name: str, site: dict, remote_dir: str, local_dir: str,
+                          include: list = None, exclude: list = None,
+                          execute: bool = False, force: bool = False) -> list:
+    """Walk remote_dir, download_file() each matching file to its mirrored
+    path under local_dir. Shared core for the CLI's batch-download and the
+    MCP batch_download tool."""
+    include = include or []
+    exclude = exclude or []
     ftp = _connect(site)
     try:
-        remote_files = [path for path, _facts in _walk_remote_dir(ftp, args.remote_dir)]
+        remote_files = [path for path, _facts in _walk_remote_dir(ftp, remote_dir)]
     finally:
         try:
             ftp.quit()
@@ -1126,12 +1150,23 @@ def cmd_batch_download(args):
 
     results = []
     for remote_full in remote_files:
-        rel = os.path.relpath(remote_full, args.remote_dir).replace(os.sep, "/")
+        rel = os.path.relpath(remote_full, remote_dir).replace(os.sep, "/")
         if not _matches_filters(rel, include, exclude):
             continue
-        local_full = os.path.join(args.local_dir, rel)
+        local_full = os.path.join(local_dir, rel)
         results.append(download_file(site_name, site, remote_full, local_full,
-                                      execute=args.execute, force=args.force))
+                                      execute=execute, force=force))
+    return results
+
+
+def cmd_batch_download(args):
+    site_name = _resolve_site_name(args)
+    site = _load_site_or_exit(site_name)
+    include = args.include.split(",") if args.include else []
+    exclude = args.exclude.split(",") if args.exclude else []
+    results = batch_download_files(site_name, site, args.remote_dir, args.local_dir,
+                                    include=include, exclude=exclude,
+                                    execute=args.execute, force=args.force)
     if args.json:
         print(json.dumps(results, indent=2))
     else:
