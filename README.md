@@ -220,16 +220,37 @@ Starts an MCP server (stdio transport) exposing seven tools —
 `list_remote`, `setup_site` — mirroring the CLI subcommands 1:1. Every
 write tool defaults to `execute=False`, identical to the CLI's
 `--execute` requirement: the agent must explicitly opt in to actually
-changing anything. Point your agent's MCP config at it, e.g.:
+changing anything.
+
+**One-command setup for a specific agent**, run from the project
+directory you'll be deploying from:
+
+```bash
+safe-ftp-deploy install claude       # Claude Code
+safe-ftp-deploy install cursor       # Cursor
+safe-ftp-deploy install windsurf     # Windsurf (registers globally -- Windsurf has no project-level config)
+safe-ftp-deploy install opencode     # OpenCode
+safe-ftp-deploy install antigravity  # Antigravity
+safe-ftp-deploy install all          # all of the above at once
+```
+
+This merges an MCP server entry into that agent's config file (existing
+entries are always preserved — it only ever adds/updates the
+`safe-ftp-deploy` entry, and refuses rather than overwrites if the file
+isn't valid JSON) and installs the safe-dry-run-then-confirm workflow
+guidance: a real skill for Claude Code
+(`.claude/skills/safe-ftp-deploy/SKILL.md`), or an `AGENTS.md` section for
+the others, since they don't have a native skill mechanism.
+
+Prefer manual setup instead? Point your agent's MCP config at it directly:
 
 ```json
 {"mcpServers": {"safe-ftp-deploy": {"command": "safe-ftp-deploy", "args": ["mcp"]}}}
 ```
 
-A skill teaching an agent the required dry-run-then-confirm workflow
-ships in this repo at [`skill/safe-ftp-deploy/SKILL.md`](skill/safe-ftp-deploy/SKILL.md).
-Copy or symlink it into `~/.claude/skills/safe-ftp-deploy/` (or a
-project's own `.claude/skills/`) so an agent picks it up automatically.
+The skill content that `install claude` writes also ships as a plain file
+at [`skill/safe-ftp-deploy/SKILL.md`](skill/safe-ftp-deploy/SKILL.md) if
+you'd rather copy it yourself.
 
 ### Option 2: CLI subprocess
 

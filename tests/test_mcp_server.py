@@ -15,3 +15,17 @@ def test_mcp_subcommand_parses():
     parser = safe_ftp._build_parser()
     args = parser.parse_args(["mcp"])
     assert args.func == safe_ftp.cmd_mcp
+
+
+def test_install_subcommand_parses_with_target():
+    parser = safe_ftp._build_parser()
+    args = parser.parse_args(["install", "claude"])
+    assert args.func == safe_ftp.cmd_install
+    assert args.target == "claude"
+
+
+def test_install_subcommand_rejects_unknown_target():
+    import pytest
+    parser = safe_ftp._build_parser()
+    with pytest.raises(SystemExit):
+        parser.parse_args(["install", "not-a-real-agent"])

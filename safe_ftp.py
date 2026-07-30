@@ -1343,12 +1343,33 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p_mcp.set_defaults(func=cmd_mcp)
 
+    p_install = sub.add_parser(
+        "install",
+        help="Register the MCP server (and skill/agent guidance) for a coding agent, "
+             "in the current directory.",
+    )
+    p_install.add_argument(
+        "target", choices=["claude", "cursor", "windsurf", "opencode", "antigravity", "all"],
+        help="Which agent to configure. 'all' configures every supported agent.",
+    )
+    p_install.set_defaults(func=cmd_install)
+
     return parser
 
 
 def cmd_mcp(args):
     import safe_ftp_mcp
     safe_ftp_mcp.run_server()
+
+
+def cmd_install(args):
+    import safe_ftp_install
+    results = safe_ftp_install.install_agent(args.target)
+    for r in results:
+        if r["status"] == "ok":
+            print(f"OK: {r['message']}")
+        else:
+            print(f"ERROR: {r['message']}")
 
 
 def main():

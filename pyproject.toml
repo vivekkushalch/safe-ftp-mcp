@@ -17,7 +17,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-py-modules = ["safe_ftp", "safe_ftp_format", "safe_ftp_mcp"]
+py-modules = ["safe_ftp", "safe_ftp_format", "safe_ftp_mcp", "safe_ftp_install"]
 
 [dependency-groups]
 dev = ["pytest>=8.0.0"]
