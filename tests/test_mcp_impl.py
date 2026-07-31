@@ -45,6 +45,7 @@ def _isolate(tmp_path, monkeypatch):
     monkeypatch.setattr(safe_ftp, "CREDS_FILE", str(config_dir / "sites.enc"))
     monkeypatch.setattr(safe_ftp, "SALT_FILE", str(config_dir / "salt.bin"))
     monkeypatch.setattr(safe_ftp, "STATE_FILE", str(config_dir / "state.json"))
+    monkeypatch.setattr(safe_ftp, "HISTORY_FILE", str(config_dir / "history.json"))
 
 
 def _setup_configured_site(tmp_path, monkeypatch, site_name="mysite"):
@@ -107,6 +108,34 @@ def test_download_impl_includes_summary_markdown(tmp_path, monkeypatch):
     result = safe_ftp_mcp._download_impl(remote="/public_html/config.php", local=str(local_file))
 
     assert result["status"] == "dry_run"
+    assert result["summary_markdown"]
+
+
+def test_deploy_impl_records_message_in_history(tmp_path, monkeypatch):
+    _setup_configured_site(tmp_path, monkeypatch)
+    local_file = tmp_path / "index.php"
+    local_file.write_bytes(b"new content")
+    fake_ftp = _FakeFTP(files={"/public_html/index.php": b"old content"})
+    monkeypatch.setattr(safe_ftp, "_connect", lambda site: fake_ftp)
+
+    result = safe_ftp_mcp._deploy_impl(
+        local=str(local_file), remote="/public_html/index.php", execute=True, message="fix bug",
+    )
+
+    assert result["status"] == "success"
+    history = safe_ftp_mcp._history_impl(remote="/public_html/index.php")
+    assert history["total_entries"] == 1
+    assert history["entries"][0]["message"] == "fix bug"
+    assert history["summary_markdown"]
+
+
+def test_history_impl_returns_empty_for_undeployed_file(tmp_path, monkeypatch):
+    _setup_configured_site(tmp_path, monkeypatch)
+
+    result = safe_ftp_mcp._history_impl(remote="/public_html/never.php")
+
+    assert result["total_entries"] == 0
+    assert result["entries"] == []
     assert result["summary_markdown"]
 
 

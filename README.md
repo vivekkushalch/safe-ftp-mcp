@@ -145,6 +145,22 @@ safe-ftp-deploy batch-deploy --local-dir ./site --remote-dir /public_html --exec
 safe-ftp-deploy status --remote /public_html/index.php
 ```
 
+**Attach a note to a deploy, and look back at it later:**
+
+```bash
+safe-ftp-deploy deploy --local ./index.php --remote /public_html/index.php --execute -m "fix checkout redirect loop"
+
+safe-ftp-deploy history --remote /public_html/index.php
+```
+
+`--message`/`-m` is optional on both `deploy` and `batch-deploy` (one message
+covers every file in a batch run). It's only recorded when a deploy actually
+executes successfully — dry-runs and failed deploys don't get a history
+entry. `history` is read-only and never contacts the server: it just reads
+the local log of past deploys for that remote path (timestamp, message,
+resulting hash, and which backup file it replaced), most recent first,
+capped at 10 entries by default (`--limit` to change that).
+
 ## Custom / dynamic paths
 
 `--local` and `--remote` (and `--local-dir` / `--remote-dir`) are plain arguments —
@@ -215,9 +231,9 @@ for. There are two ways to hand it to an agent:
 safe-ftp-deploy mcp
 ```
 
-Starts an MCP server (stdio transport) exposing seven tools —
+Starts an MCP server (stdio transport) exposing eight tools —
 `deploy`, `batch_deploy`, `download`, `batch_download`, `status`,
-`list_remote`, `setup_site` — mirroring the CLI subcommands 1:1. Every
+`history`, `list_remote`, `setup_site` — mirroring the CLI subcommands 1:1. Every
 write tool defaults to `execute=False`, identical to the CLI's
 `--execute` requirement: the agent must explicitly opt in to actually
 changing anything.

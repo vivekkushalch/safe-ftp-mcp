@@ -43,7 +43,7 @@ not to work around the guardrails.
 ## How to reach it
 
 **Preferred: MCP tools**, if `safe-ftp-deploy mcp` is configured as an MCP
-server in this session. Seven tools, all returning a `summary_markdown`
+server in this session. Eight tools, all returning a `summary_markdown`
 field — relay that directly to the user instead of composing your own
 summary from the raw fields:
 
@@ -54,8 +54,15 @@ summary from the raw fields:
 | `download` | Download a single remote file to a local path |
 | `batch_download` | Download every file under a remote folder to a local folder |
 | `status` | Check drift status of a remote file, read-only |
+| `history` | Show past deploys for a remote file (timestamp, message, hash, backup), read-only |
 | `list_remote` | List a remote directory's contents, read-only |
 | `setup_site` | Provision or update an encrypted site profile |
+
+`deploy`/`batch_deploy` accept an optional `message` param, recorded in
+`history` when the deploy actually executes successfully. Pass a short note
+on *why* when the user gives you one (or it's obvious from their request) —
+it's what makes `history` useful for reconciling later. Don't invent a
+message when there's nothing meaningful to say; an empty one is fine.
 
 **Fallback: the CLI as a subprocess**, if MCP isn't configured. Always add
 `--json` so you get structured output instead of having to scrape text:
@@ -123,8 +130,10 @@ _AGENTS_MD_BODY = """\
 ## safe-ftp-deploy
 
 A safety-first FTP/FTPS deploy tool available as MCP tools (`deploy`,
-`batch_deploy`, `download`, `batch_download`, `status`, `list_remote`,
-`setup_site`) or as the `safe-ftp-deploy` CLI with `--json`. It enforces
+`batch_deploy`, `download`, `batch_download`, `status`, `history`,
+`list_remote`, `setup_site`) or as the `safe-ftp-deploy` CLI with `--json`.
+`deploy`/`batch_deploy` take an optional `message` recorded in `history` on
+a successful execute -- pass a short note on why when you have one. It enforces
 its own safety rules regardless of what you ask it to do: no delete
 capability, drift detection against the last known server state, a
 per-site directory whitelist, and dry-run by default on every write.

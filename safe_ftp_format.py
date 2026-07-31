@@ -111,6 +111,31 @@ def format_status_markdown(result: dict) -> str:
     return "\n".join(lines)
 
 
+def _escape_table_cell(text: str) -> str:
+    return text.replace("|", "\\|").replace("\n", " ")
+
+
+def format_history_markdown(result: dict) -> str:
+    lines = [f"### Deploy history: `{result.get('remote_path')}`", ""]
+    entries = result.get("entries", [])
+    if not entries:
+        lines.append("_No recorded deploys for this file yet._")
+        return "\n".join(lines)
+
+    lines.append("| When | Message | New hash | Backup |")
+    lines.append("|---|---|---|---|")
+    for e in entries:
+        message = _escape_table_cell(e["message"]) if e.get("message") else "_(no message)_"
+        new_hash = (e.get("new_hash") or "")[:8]
+        backup = f"`{e['backup_name']}`" if e.get("backup_name") else "-"
+        lines.append(f"| {e.get('deployed_at', '')} | {message} | `{new_hash}` | {backup} |")
+
+    total = result.get("total_entries", len(entries))
+    lines.append("")
+    lines.append(f"Showing {len(entries)} of {total} recorded deploy(s).")
+    return "\n".join(lines)
+
+
 def format_list_remote_markdown(result: dict) -> str:
     lines = [f"### Listing: `{result.get('remote_dir')}`", ""]
 

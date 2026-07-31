@@ -109,6 +109,7 @@ CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".safe_ftp_deploy")
 CREDS_FILE = os.path.join(CONFIG_DIR, "sites.enc")
 SALT_FILE = os.path.join(CONFIG_DIR, "salt.bin")
 STATE_FILE = os.path.join(CONFIG_DIR, "state.json")  # no secrets in here, just hashes
+HISTORY_FILE = os.path.join(CONFIG_DIR, "history.json")  # append-only deploy log, keyed like STATE_FILE
 
 # .ftpconfig (site name + master password) and legacy .masterpwd (password
 # only) are both resolved from the current working directory -- the tool is
@@ -307,6 +308,31 @@ def _state_key(site_name: str, remote_path: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Deploy history -- an append-only log of successful deploys, separate from
+# STATE_FILE's single "last known good" entry per file. This is what lets you
+# reconcile later: which deploy introduced a change, what it replaced, and
+# (optionally) why, via the free-text message passed at deploy time.
+# ---------------------------------------------------------------------------
+def _load_history() -> dict:
+    if not os.path.exists(HISTORY_FILE):
+        return {}
+    with open(HISTORY_FILE, "r") as f:
+        return json.load(f)
+
+
+def _save_history(history: dict):
+    _ensure_config_dir()
+    with open(HISTORY_FILE, "w") as f:
+        json.dump(history, f, indent=2)
+
+
+def _append_history_entry(key: str, entry: dict):
+    history = _load_history()
+    history.setdefault(key, []).append(entry)
+    _save_history(history)
+
+
+# ---------------------------------------------------------------------------
 # FTP helpers
 # ---------------------------------------------------------------------------
 def _connect(site: dict) -> FTP:
@@ -455,7 +481,7 @@ def _walk_remote_dir(ftp: FTP, remote_dir: str, max_depth=None, _depth=1):
 # ---------------------------------------------------------------------------
 def deploy_file(site_name: str, site: dict, local_path: str, remote_path: str,
                  execute: bool, force: bool = False, expected_hash: str = None,
-                 show_progress: bool = False) -> dict:
+                 show_progress: bool = False, message: str = None) -> dict:
     """
     Perform (or simulate) the backup-rename-then-upload flow for one file.
     Returns a structured result dict -- never raises for "expected" problems,
@@ -591,8 +617,19 @@ def deploy_file(site_name: str, site: dict, local_path: str, remote_path: str,
             )
             return result
 
-        state[key] = {"hash": uploaded_hash, "deployed_at": datetime.now().isoformat()}
+        deployed_at = datetime.now().isoformat()
+        state[key] = {"hash": uploaded_hash, "deployed_at": deployed_at}
         _save_state(state)
+
+        _append_history_entry(key, {
+            "deployed_at": deployed_at,
+            "local_path": local_path,
+            "remote_path": remote_path,
+            "old_hash": current_remote_hash if exists else None,
+            "new_hash": uploaded_hash,
+            "backup_name": backup_path if exists else None,
+            "message": message or "",
+        })
 
         result["executed"] = True
         result["status"] = "success"
@@ -757,6 +794,23 @@ def check_status(site_name: str, site: dict, remote_path: str) -> dict:
             ftp.quit()
         except Exception:
             ftp.close()
+
+
+def get_deploy_history(site_name: str, remote_path: str, limit: int = 10) -> dict:
+    """Return past successful deploys for one remote file, most recent
+    first. Purely local -- reads HISTORY_FILE, no FTP connection, no site
+    credentials needed."""
+    history = _load_history()
+    entries = history.get(_state_key(site_name, remote_path), [])
+    total = len(entries)
+    recent = entries[-limit:] if limit else entries
+    recent = list(reversed(recent))
+    return {
+        "site": site_name,
+        "remote_path": remote_path,
+        "total_entries": total,
+        "entries": recent,
+    }
 
 
 def _sort_entries(entries: list, sort_by: str, reverse: bool) -> list:
@@ -1078,7 +1132,7 @@ def cmd_deploy(args):
     site_name = _resolve_site_name(args)
     site = _load_site_or_exit(site_name)
     result = deploy_file(site_name, site, args.local, args.remote, execute=args.execute, force=args.force,
-                          expected_hash=args.expected_hash, show_progress=not args.json)
+                          expected_hash=args.expected_hash, show_progress=not args.json, message=args.message)
     if args.json:
         print(json.dumps(result, indent=2))
     else:
@@ -1087,7 +1141,7 @@ def cmd_deploy(args):
 
 def batch_deploy_files(site_name: str, site: dict, local_dir: str, remote_dir: str,
                         include: list = None, exclude: list = None,
-                        execute: bool = False, force: bool = False) -> list:
+                        execute: bool = False, force: bool = False, message: str = None) -> list:
     """Walk local_dir, deploy_file() each matching file to its mirrored path
     under remote_dir. Shared core for the CLI's batch-deploy and the MCP
     batch_deploy tool."""
@@ -1102,7 +1156,7 @@ def batch_deploy_files(site_name: str, site: dict, local_dir: str, remote_dir: s
                 continue
             remote_full = os.path.join(remote_dir, rel).replace(os.sep, "/")
             results.append(deploy_file(site_name, site, local_full, remote_full,
-                                        execute=execute, force=force))
+                                        execute=execute, force=force, message=message))
     return results
 
 
@@ -1113,7 +1167,7 @@ def cmd_batch_deploy(args):
     exclude = args.exclude.split(",") if args.exclude else []
     results = batch_deploy_files(site_name, site, args.local_dir, args.remote_dir,
                                   include=include, exclude=exclude,
-                                  execute=args.execute, force=args.force)
+                                  execute=args.execute, force=args.force, message=args.message)
     if args.json:
         print(json.dumps(results, indent=2))
     else:
@@ -1181,6 +1235,15 @@ def cmd_status(args):
         print(json.dumps(result, indent=2))
     else:
         _console.print(Markdown(fmt.format_status_markdown(result)))
+
+
+def cmd_history(args):
+    site_name = _resolve_site_name(args)
+    result = get_deploy_history(site_name, args.remote, limit=args.limit)
+    if args.json:
+        print(json.dumps(result, indent=2))
+    else:
+        _console.print(Markdown(fmt.format_history_markdown(result)))
 
 
 def cmd_list(args):
@@ -1267,6 +1330,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Hash from a prior download; deploy fails with stale_download if the remote file no "
              "longer matches it, instead of silently overwriting a newer change.",
     )
+    p_deploy.add_argument(
+        "--message", "-m",
+        help="Optional free-text note recorded with this deploy in the local history log "
+             "(see the 'history' command) -- e.g. why the change was made.",
+    )
     p_deploy.add_argument("--json", action="store_true", help=_JSON_HELP)
     p_deploy.set_defaults(func=cmd_deploy)
 
@@ -1281,6 +1349,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p_batch.add_argument(
         "--force", action="store_true",
         help="Override drift protection for every file. Use only after manually reviewing the server files.",
+    )
+    p_batch.add_argument(
+        "--message", "-m",
+        help="Optional free-text note recorded in the local history log for every file deployed "
+             "in this batch (see the 'history' command).",
     )
     p_batch.add_argument("--json", action="store_true", help=_JSON_HELP)
     p_batch.set_defaults(func=cmd_batch_deploy)
@@ -1316,6 +1389,15 @@ def _build_parser() -> argparse.ArgumentParser:
     p_status.add_argument("--remote", required=True, help="Remote path to check.")
     p_status.add_argument("--json", action="store_true", help=_JSON_HELP)
     p_status.set_defaults(func=cmd_status)
+
+    p_history = sub.add_parser(
+        "history", help="Show past deploys for a remote file, with messages (read-only, no server contact)."
+    )
+    p_history.add_argument("--name", help=_NAME_HELP)
+    p_history.add_argument("--remote", required=True, help="Remote path to show history for.")
+    p_history.add_argument("--limit", type=int, default=10, help="Max entries to show, most recent first. Default: 10.")
+    p_history.add_argument("--json", action="store_true", help=_JSON_HELP)
+    p_history.set_defaults(func=cmd_history)
 
     p_list = sub.add_parser("list", help="List a remote directory's contents (read-only).")
     p_list.add_argument("--name", help=_NAME_HELP)

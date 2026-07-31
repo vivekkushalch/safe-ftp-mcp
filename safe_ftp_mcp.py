@@ -27,11 +27,11 @@ def _resolve_and_load(name):
 
 
 def _deploy_impl(local: str = "", remote: str = "", name: str = None, execute: bool = False,
-                  force: bool = False, expected_hash: str = None) -> dict:
+                  force: bool = False, expected_hash: str = None, message: str = None) -> dict:
     try:
         site_name, site = _resolve_and_load(name)
         result = safe_ftp.deploy_file(site_name, site, local, remote, execute=execute, force=force,
-                                       expected_hash=expected_hash)
+                                       expected_hash=expected_hash, message=message)
         result["summary_markdown"] = fmt.format_deploy_markdown(result)
         return result
     except SystemExit as e:
@@ -40,14 +40,14 @@ def _deploy_impl(local: str = "", remote: str = "", name: str = None, execute: b
 
 def _batch_deploy_impl(local_dir: str = "", remote_dir: str = "", name: str = None,
                         include: str = None, exclude: str = None,
-                        execute: bool = False, force: bool = False) -> dict:
+                        execute: bool = False, force: bool = False, message: str = None) -> dict:
     try:
         site_name, site = _resolve_and_load(name)
         include_list = include.split(",") if include else []
         exclude_list = exclude.split(",") if exclude else []
         results = safe_ftp.batch_deploy_files(site_name, site, local_dir, remote_dir,
                                                include=include_list, exclude=exclude_list,
-                                               execute=execute, force=force)
+                                               execute=execute, force=force, message=message)
         return {
             "results": results,
             "summary_markdown": fmt.format_batch_deploy_markdown(results, local_dir, remote_dir),
@@ -90,6 +90,16 @@ def _status_impl(remote: str = "", name: str = None) -> dict:
         site_name, site = _resolve_and_load(name)
         result = safe_ftp.check_status(site_name, site, remote)
         result["summary_markdown"] = fmt.format_status_markdown(result)
+        return result
+    except SystemExit as e:
+        return {"status": "error", "message": str(e)}
+
+
+def _history_impl(remote: str = "", name: str = None, limit: int = 10) -> dict:
+    try:
+        site_name = safe_ftp._resolve_site_name_value(name)
+        result = safe_ftp.get_deploy_history(site_name, remote, limit=limit)
+        result["summary_markdown"] = fmt.format_history_markdown(result)
         return result
     except SystemExit as e:
         return {"status": "error", "message": str(e)}
@@ -199,21 +209,26 @@ def _build_mcp_server():
 
     @mcp_server.tool()
     def deploy(local: str, remote: str, name: str = None, execute: bool = False,
-               force: bool = False, expected_hash: str = None) -> dict:
+               force: bool = False, expected_hash: str = None, message: str = None) -> dict:
         """Deploy a single local file to a remote path. Dry-run unless
         execute=True -- always review the dry-run result before setting
-        execute=True on a real call."""
+        execute=True on a real call. On a successful execute, message is
+        recorded in the local deploy history (see the history tool) --
+        pass a short note on why the change was made when you have one."""
         return _deploy_impl(local=local, remote=remote, name=name, execute=execute,
-                             force=force, expected_hash=expected_hash)
+                             force=force, expected_hash=expected_hash, message=message)
 
     @mcp_server.tool()
     def batch_deploy(local_dir: str, remote_dir: str, name: str = None, include: str = None,
-                      exclude: str = None, execute: bool = False, force: bool = False) -> dict:
+                      exclude: str = None, execute: bool = False, force: bool = False,
+                      message: str = None) -> dict:
         """Deploy every file under local_dir to its mirrored path under
         remote_dir (filtered by comma-separated include/exclude glob
-        patterns). Dry-run unless execute=True."""
+        patterns). Dry-run unless execute=True. On a successful execute,
+        message is recorded in each deployed file's history entry."""
         return _batch_deploy_impl(local_dir=local_dir, remote_dir=remote_dir, name=name,
-                                   include=include, exclude=exclude, execute=execute, force=force)
+                                   include=include, exclude=exclude, execute=execute, force=force,
+                                   message=message)
 
     @mcp_server.tool()
     def download(remote: str, local: str, name: str = None, execute: bool = False,
@@ -234,6 +249,13 @@ def _build_mcp_server():
     def status(remote: str, name: str = None) -> dict:
         """Check drift status of a remote file without changing anything."""
         return _status_impl(remote=remote, name=name)
+
+    @mcp_server.tool()
+    def history(remote: str, name: str = None, limit: int = 10) -> dict:
+        """Show past deploys for a remote file, most recent first --
+        timestamp, message, resulting hash, and backup name for each. Purely
+        local and read-only; does not contact the server."""
+        return _history_impl(remote=remote, name=name, limit=limit)
 
     @mcp_server.tool()
     def list_remote(remote_dir: str, name: str = None, recursive: bool = False,

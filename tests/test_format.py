@@ -49,6 +49,41 @@ def test_format_status_markdown_shows_drift_hashes():
     assert "5555666" in md
 
 
+def test_format_history_markdown_shows_entries_and_count():
+    result = {
+        "site": "mysite", "remote_path": "/public_html/index.php", "total_entries": 3,
+        "entries": [
+            {"deployed_at": "2026-08-01T14:32:10", "message": "fix bug",
+             "new_hash": "abcdef1234567890", "backup_name": "/public_html/index_010826.php"},
+            {"deployed_at": "2026-07-30T10:00:00", "message": "", "new_hash": "1111222233334444",
+             "backup_name": None},
+        ],
+    }
+    md = fmt.format_history_markdown(result)
+    assert "fix bug" in md
+    assert "abcdef12" in md
+    assert "index_010826.php" in md
+    assert "_(no message)_" in md
+    assert "Showing 2 of 3" in md
+
+
+def test_format_history_markdown_empty():
+    result = {"site": "mysite", "remote_path": "/public_html/index.php", "total_entries": 0, "entries": []}
+    md = fmt.format_history_markdown(result)
+    assert "No recorded deploys" in md
+
+
+def test_format_history_markdown_escapes_pipe_in_message():
+    result = {
+        "site": "mysite", "remote_path": "/public_html/index.php", "total_entries": 1,
+        "entries": [
+            {"deployed_at": "2026-08-01T14:32:10", "message": "a | b\nc", "new_hash": "aa", "backup_name": None},
+        ],
+    }
+    md = fmt.format_history_markdown(result)
+    assert "a \\| b c" in md
+
+
 def test_format_list_remote_markdown_table_has_all_entries_and_summary():
     result = {
         "site": "mysite", "remote_dir": "/public_html", "status": "ok",

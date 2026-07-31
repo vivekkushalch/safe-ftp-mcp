@@ -47,6 +47,7 @@ def _isolate_state(tmp_path, monkeypatch):
     config_dir = tmp_path / "global_config"
     monkeypatch.setattr(safe_ftp, "CONFIG_DIR", str(config_dir))
     monkeypatch.setattr(safe_ftp, "STATE_FILE", str(config_dir / "state.json"))
+    monkeypatch.setattr(safe_ftp, "HISTORY_FILE", str(config_dir / "history.json"))
 
 
 def _site():

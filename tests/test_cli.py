@@ -72,6 +72,43 @@ def test_deploy_expected_hash_defaults_to_none():
     assert args.expected_hash is None
 
 
+def test_deploy_accepts_message_flag():
+    parser = safe_ftp._build_parser()
+    args = parser.parse_args(["deploy", "--local", "a", "--remote", "b", "--message", "fix bug"])
+    assert args.message == "fix bug"
+
+
+def test_deploy_message_short_flag_and_default():
+    parser = safe_ftp._build_parser()
+    args = parser.parse_args(["deploy", "--local", "a", "--remote", "b", "-m", "note"])
+    assert args.message == "note"
+    args = parser.parse_args(["deploy", "--local", "a", "--remote", "b"])
+    assert args.message is None
+
+
+def test_batch_deploy_accepts_message_flag():
+    parser = safe_ftp._build_parser()
+    args = parser.parse_args(["batch-deploy", "--local-dir", "a", "--remote-dir", "b", "-m", "batch note"])
+    assert args.message == "batch note"
+
+
+def test_history_requires_remote_and_defaults_limit():
+    parser = safe_ftp._build_parser()
+    args = parser.parse_args(["history", "--remote", "/public_html/index.php"])
+    assert args.remote == "/public_html/index.php"
+    assert args.limit == 10
+    assert args.name is None
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["history"])
+
+
+def test_history_limit_flag_parses():
+    parser = safe_ftp._build_parser()
+    args = parser.parse_args(["history", "--remote", "a", "--limit", "5"])
+    assert args.limit == 5
+
+
 def test_list_new_flags_parse():
     parser = safe_ftp._build_parser()
     args = parser.parse_args([
