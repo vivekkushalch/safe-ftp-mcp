@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="assets/logo.svg" alt="Safe FTP Deploy logo" width="120" height="120">
+
 # Safe FTP Deploy
 
 **FTP deploys you can hand to an AI agent without losing sleep.**<br>
@@ -46,6 +48,7 @@ then upload local './index.php' as '/public_html/index.php'. Re-run with --execu
 | 🕒 **Timestamped backups** | `DDMMYY_HHMMSS_microseconds`, so names never collide. |
 | 📜 **Deploy history** | Attach notes with `-m` and review them later. |
 | 🤖 **MCP server** | Eight tools, one-command install for Claude Code, Cursor, Windsurf, OpenCode and Antigravity. |
+| 🧠 **Agent skill** | Bundled `safe-ftp-deploy` skill teaches agents the dry-run-first workflow. Installed automatically by `install`. |
 
 ## Quick start
 
@@ -232,7 +235,7 @@ safe-ftp-deploy install antigravity  # Antigravity
 safe-ftp-deploy install all          # everything above
 ```
 
-This merges an MCP entry into the agent's config (existing entries are kept) and installs a skill that teaches the dry-run-first workflow.
+This merges an MCP entry into the agent's config (existing entries are kept) and installs the bundled [`safe-ftp-deploy` skill](skill/safe-ftp-deploy/SKILL.md), which tells the agent to dry-run first, relay the summary to you, and never work around the guardrails.
 
 **Manual config:**
 

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="Safe FTP Deploy logo">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3b82f6"/>
+      <stop offset="1" stop-color="#1e40af"/>
+    </linearGradient>
+  </defs>
+  <path d="M64 8 L108 24 V62 C108 88 90 108 64 120 C38 108 20 88 20 62 V24 Z" fill="url(#g)"/>
+  <path d="M64 8 L108 24 V62 C108 88 90 108 64 120 Z" fill="#000" opacity=".12"/>
+  <path d="M64 32 L84 54 H71 V82 H57 V54 H44 Z" fill="#fff"/>
+  <rect x="42" y="88" width="44" height="7" rx="3.5" fill="#fff"/>
+</svg>
