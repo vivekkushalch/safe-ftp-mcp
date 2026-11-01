@@ -1,197 +1,188 @@
+<div align="center">
+
 # Safe FTP Deploy
 
-A drop-in replacement for the manual "rename old file → upload new file" flow
-you're currently doing in FileZilla, built so it's safe to hand to an AI
-agent without fear of it wiping your server.
+**FTP deploys you can hand to an AI agent without losing sleep.**<br>
+Drift detection · no-delete guarantee · dry-run by default · MCP server included
 
-## Contents
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![uv](https://img.shields.io/badge/uv-compatible-green.svg)](https://docs.astral.sh/uv/)
+[![MCP](https://img.shields.io/badge/MCP-server-8A2BE2.svg)](https://modelcontextprotocol.io)
+[![Platforms](https://img.shields.io/badge/platform-windows%20%7C%20macos%20%7C%20linux-lightgrey.svg)](#installation)
 
-- [Install](#install)
-- [One-time setup per site](#1-one-time-setup-per-site)
-  - [Non-interactive / scripted setup](#non-interactive--scripted-setup)
-  - [Importing from FileZilla](#importing-from-filezilla)
-- [Everyday use](#2-everyday-use)
-- [Custom / dynamic paths](#custom--dynamic-paths)
-- [Download (single file and bulk)](#download-single-file-and-bulk)
-- [Filtering bulk operations](#filtering-bulk-operations-includeexclude)
-- [Safety guarantees](#safety-guarantees)
-- [Using this safely with an AI coding agent](#using-this-safely-with-an-ai-coding-agent)
-- [Known limitation to keep in mind](#known-limitation-to-keep-in-mind)
+[Quick start](#quick-start) · [Features](#features) · [Usage](#usage) · [AI agents](#ai-agent-integration) · [Safety model](#safety-model) · [Contributing](#contributing)
 
-## Install
+</div>
 
-Requires [`uv`](https://docs.astral.sh/uv/getting-started/installation/):
+---
+
+## What is it?
+
+Safe FTP Deploy is a drop-in replacement for the manual "rename old file, upload new file" routine you do in FileZilla. It never deletes anything, never overwrites blindly, and does nothing at all until you pass `--execute`.
+
+That makes it safe to expose to an AI coding agent. The tool decides *how* a deploy happens, whatever the agent asks for.
+
+```text
+$ safe-ftp-deploy deploy --local ./index.php --remote /public_html/index.php
+
+Deploy: ./index.php → /public_html/index.php
+
+📝 Dry run — [DRY RUN] Would rename remote '/public_html/index.php' -> '/public_html/index_<timestamp>.php',
+then upload local './index.php' as '/public_html/index.php'. Re-run with --execute to apply.
+- Backup: /public_html/index_<timestamp>.php
+```
+
+## Features
+
+| | |
+|---|---|
+| 🛡️ **No delete capability** | The only destructive-looking operation is `rename`, which keeps the original bytes under a new name. |
+| 🔍 **Drift detection** | Refuses to overwrite if the server file changed since your last deploy. Override with `--force`. |
+| 🎯 **Dry-run by default** | Nothing is touched unless you pass `--execute`. |
+| ✅ **Post-upload verification** | Re-downloads the file and compares hashes. |
+| 📁 **Directory whitelist** | Limit which remote folders can ever be touched. |
+| 🔐 **Encrypted credentials** | Fernet (AES) with a PBKDF2-SHA256 key, 480k iterations. |
+| 🕒 **Timestamped backups** | `DDMMYY_HHMMSS_microseconds`, so names never collide. |
+| 📜 **Deploy history** | Attach notes with `-m` and review them later. |
+| 🤖 **MCP server** | Eight tools, one-command install for Claude Code, Cursor, Windsurf, OpenCode and Antigravity. |
+
+## Quick start
+
+**1. Install** (needs [`uv`](https://docs.astral.sh/uv/getting-started/installation/)):
 
 ```bash
 uv tool install git+https://github.com/vivekkushalch/safe_ftp.git
 ```
 
-This installs a `safe-ftp-deploy` command on your PATH. Works the same way
-on Windows, macOS, and Linux — no separate Python/pip setup beyond having
-`uv` installed.
-
-### Updating
-
-```bash
-uv tool upgrade safe-ftp-deploy
-```
-
-That's the entire update process — `uv` re-pulls and rebuilds from the repo.
-There's no separate update command or background version check built into
-the tool itself.
-
-## 1. One-time setup per site
+**2. Set up a site** (once per project folder):
 
 ```bash
 safe-ftp-deploy setup-site --name mysite
 ```
 
-Run this once per project directory (its working directory is what makes
-the config that follows project-specific). You'll be prompted for:
-- A **master password** (encrypts the credentials file — this password is never
-  saved anywhere; you type it every time you use the tool)
-- FTP host, port, username, password
-- A whitelist of remote directories this site is allowed to touch
-  (e.g. `/public_html/,/public_html/blog/`) — anything outside this is refused,
-  even if an agent tells the tool to go there.
+You'll be asked for a master password (encrypts the credentials, never saved to disk), the FTP host, port, username and password, and the allowed remote directories, e.g. `/public_html/,/public_html/blog/`.
 
-Credentials are stored encrypted (AES via Fernet, key derived from your master
-password with PBKDF2-SHA256, 480k iterations) in `~/.safe_ftp_deploy/sites.enc`.
-The password itself never touches disk.
+**3. Deploy:**
 
-### Non-interactive / scripted setup
+```bash
+# Dry-run first
+safe-ftp-deploy deploy --local ./index.php --remote /public_html/index.php
 
-Every field can be supplied without prompts, for automation or bulk setup:
+# Looks right? Do it.
+safe-ftp-deploy deploy --local ./index.php --remote /public_html/index.php --execute
+```
+
+What happens on `--execute`:
+
+1. Download and hash the current remote file.
+2. Compare against the last known hash (drift check).
+3. Rename the old file to a timestamped backup.
+4. Upload the new file.
+5. Re-download and verify it matches.
+
+## Installation
+
+Works the same on Windows, macOS and Linux.
+
+```bash
+# install
+uv tool install git+https://github.com/vivekkushalch/safe_ftp.git
+
+# update
+uv tool upgrade safe-ftp-deploy
+```
+
+<details>
+<summary>Install from source (for development)</summary>
+
+```bash
+git clone https://github.com/vivekkushalch/safe_ftp.git
+cd safe_ftp
+uv sync
+uv run safe-ftp-deploy --help
+```
+
+</details>
+
+## Setup
+
+### Interactive
+
+```bash
+safe-ftp-deploy setup-site --name mysite
+```
+
+Credentials are stored encrypted in `~/.safe_ftp_deploy/sites.enc`.
+
+### Non-interactive
 
 ```bash
 safe-ftp-deploy setup-site --name mysite --non-interactive \
   --host ftp.example.com --port 21 --username myuser \
-  --ftp-password "$FTP_PW" --master-password "$MASTER_PW" \
   --use-tls --allowed-dirs "/public_html/,/public_html/blog/"
 ```
 
-`--non-interactive` requires every field to resolve from a flag, an
-environment variable, or `--from-filezilla` (below) — it errors out
-listing exactly what's missing rather than silently prompting or guessing.
+Pass passwords through environment variables so they stay out of shell history:
 
-- `--ftp-password` can also come from `SAFE_FTP_FTP_PASSWORD`.
-- `--master-password` can also come from `SAFE_FTP_MASTER_PASSWORD`, or
-  from an existing `.ftpconfig`/`.masterpwd` already in this directory.
-- `--use-tls`/`--no-tls` and `--allowed-dirs` have safe defaults (TLS on,
-  empty whitelist) if omitted, so they're never required.
-- Environment variables are preferred over flags for passwords when you
-  have the choice — flags land in shell history and process listings,
-  env vars don't.
+| Variable | Purpose |
+|---|---|
+| `SAFE_FTP_FTP_PASSWORD` | FTP password |
+| `SAFE_FTP_MASTER_PASSWORD` | Master password |
 
-### Importing from FileZilla
+`--ftp-password` and `--master-password` flags also work but are less safe.
 
-If you already have the site saved in FileZilla, point `setup-site` at a
-Site Manager XML export instead of typing the connection details:
+### Import from FileZilla
 
 ```bash
 safe-ftp-deploy setup-site --name mysite --from-filezilla ./export.xml
 ```
 
-The export must contain exactly one `<Server>` entry — trim a multi-site
-export down first. This pre-fills host, port, username, password, and TLS;
-you're still prompted for the allowed-dirs whitelist unless you also pass
-`--allowed-dirs` (or `--non-interactive`, in which case it defaults to
-empty with the usual warning). Any explicit flag (`--host`, `--use-tls`,
-etc.) overrides the imported value for that field.
+Use a Site Manager XML export containing exactly one `<Server>`. It pre-fills host, port, username, password and TLS. You'll still be asked for the directory whitelist unless you pass `--allowed-dirs`.
 
-Passwords protected by a FileZilla *master* password (`encoding="crypt"`
-in the export) can't be decrypted by this tool — re-export without one, or
-pass `--ftp-password`/`SAFE_FTP_FTP_PASSWORD` yourself.
+> [!NOTE]
+> FileZilla exports protected by a master password (`encoding="crypt"`) can't be decrypted. Re-export without one, or pass `--ftp-password` yourself.
 
-## 2. Everyday use
+## Usage
 
-`--name` is optional after `setup-site` has run once in this folder — it
-defaults to the site recorded in `.ftpconfig` for the current directory.
-Pass `--name <site>` explicitly any time you want to target a different
-site ad hoc.
+`--name` is optional once `setup-site` has run in a folder: it defaults to the site in `.ftpconfig`.
 
-**Always dry-run first (this is the default — nothing happens unless you pass `--execute`):**
+### Commands
 
-```bash
-safe-ftp-deploy deploy --local ./index.php --remote /public_html/index.php
-```
+| Command | What it does |
+|---|---|
+| `setup-site` | Add or update an encrypted site profile |
+| `deploy` | Deploy one file |
+| `batch-deploy` | Deploy a whole local folder |
+| `download` | Download one remote file |
+| `batch-download` | Download a whole remote folder |
+| `status` | Check a remote file for drift, change nothing |
+| `history` | Show past deploys (read-only) |
+| `list` | List a remote directory (read-only) |
+| `mcp` | Start the MCP server |
+| `install` | Wire the MCP server and skill into an AI agent |
 
-**When the dry-run looks right, actually deploy:**
+Every write command is a dry-run until you add `--execute`.
+
+### Deploy
 
 ```bash
 safe-ftp-deploy deploy --local ./index.php --remote /public_html/index.php --execute
-```
-
-This will:
-1. Download the current remote file and hash it.
-2. Compare it against the hash from the *last time this tool deployed it*.
-   - If someone changed the server file outside this tool (direct edit, another
-     deploy, etc.), it stops and tells you — it will not overwrite silently.
-3. Rename the remote file to `index_270726_143210_482391.php` — format is
-   `DDMMYY_HHMMSS_microseconds`, so even multiple files backed up within the
-   same second during a batch run never collide on filename.
-4. Upload the new file.
-5. Re-download and hash it again to confirm the upload actually matches your local file.
-
-**Deploy a whole folder the same way:**
-
-```bash
 safe-ftp-deploy batch-deploy --local-dir ./site --remote-dir /public_html --execute
 ```
 
-**Check for drift without touching anything:**
+### Download
+
+Local files are renamed to timestamped backups before being overwritten.
 
 ```bash
-safe-ftp-deploy status --remote /public_html/index.php
-```
-
-**Attach a note to a deploy, and look back at it later:**
-
-```bash
-safe-ftp-deploy deploy --local ./index.php --remote /public_html/index.php --execute -m "fix checkout redirect loop"
-
-safe-ftp-deploy history --remote /public_html/index.php
-```
-
-`--message`/`-m` is optional on both `deploy` and `batch-deploy` (one message
-covers every file in a batch run). It's only recorded when a deploy actually
-executes successfully — dry-runs and failed deploys don't get a history
-entry. `history` is read-only and never contacts the server: it just reads
-the local log of past deploys for that remote path (timestamp, message,
-resulting hash, and which backup file it replaced), most recent first,
-capped at 10 entries by default (`--limit` to change that).
-
-## Custom / dynamic paths
-
-`--local` and `--remote` (and `--local-dir` / `--remote-dir`) are plain arguments —
-point them at whatever path you need at the time. Nothing is hardcoded, so this
-works fine from a wrapper script or an agent that computes the path dynamically
-each time.
-
-## Download (single file and bulk)
-
-Same safety model, mirrored for the download direction: if a local file already
-exists and would be overwritten, it's renamed to a timestamped backup first —
-never deleted — and the download is verified by hash afterward.
-
-```bash
-# Dry-run
-safe-ftp-deploy download --remote /public_html/config.php --local ./config.php
-
-# Actually download
 safe-ftp-deploy download --remote /public_html/config.php --local ./config.php --execute
-```
-
-**Bulk download an entire remote folder:**
-
-```bash
 safe-ftp-deploy batch-download --remote-dir /public_html --local-dir ./site_backup --execute
 ```
 
-## Filtering bulk operations (include/exclude)
+### Filter bulk operations
 
-Both `batch-deploy` and `batch-download` accept comma-separated glob patterns,
-so you don't accidentally bulk-touch vendor folders, logs, or caches:
+Keep vendor folders, logs and caches out of the blast radius:
 
 ```bash
 safe-ftp-deploy batch-deploy \
@@ -201,121 +192,119 @@ safe-ftp-deploy batch-deploy \
   --execute
 ```
 
-## Safety guarantees
+### History
 
-- **No delete capability exists in this tool at all.** The only "risky" FTP
-  operation used is `rename`, and renaming preserves the original bytes under
-  a new name — nothing is ever destroyed.
-- **Drift detection.** If the file on the server doesn't match what this tool
-  last put there, it refuses to proceed rather than guessing. You can override
-  with `--force` only after you've manually confirmed it's safe.
-- **Dry-run by default.** You have to explicitly pass `--execute` for anything
-  to actually happen.
-- **Post-upload verification.** After uploading, it re-downloads and hashes the
-  file to confirm the upload matches — it doesn't just assume `STOR` succeeded.
-- **Directory whitelist.** Each site profile can restrict which remote folders
-  are touchable at all.
-- **Encrypted credentials at rest**, decrypted only in memory for the duration
-  of a run, using a password that is never written to disk.
+```bash
+safe-ftp-deploy deploy --local ./index.php --remote /public_html/index.php \
+  --execute -m "fix checkout redirect loop"
 
-## Using this safely with an AI coding agent
+safe-ftp-deploy history --remote /public_html/index.php
+```
 
-Don't give an agent raw FTP access or an unrestricted FTP MCP server.
-Instead, this tool decides *how* a deploy happens — dry-run first, drift
-protection, the directory whitelist — regardless of what the agent asks
-for. There are two ways to hand it to an agent:
+History is stored locally (timestamp, message, hash, backup filename). Shows 10 entries by default; change with `--limit`.
 
-### Option 1: MCP server (recommended)
+### Check for drift
+
+```bash
+safe-ftp-deploy status --remote /public_html/index.php
+```
+
+## AI agent integration
+
+**Don't give an agent raw FTP access.** Give it this instead.
+
+### MCP server (recommended)
 
 ```bash
 safe-ftp-deploy mcp
 ```
 
-Starts an MCP server (stdio transport) exposing eight tools —
-`deploy`, `batch_deploy`, `download`, `batch_download`, `status`,
-`history`, `list_remote`, `setup_site` — mirroring the CLI subcommands 1:1. Every
-write tool defaults to `execute=False`, identical to the CLI's
-`--execute` requirement: the agent must explicitly opt in to actually
-changing anything.
+Exposes eight tools: `deploy`, `batch_deploy`, `download`, `batch_download`, `status`, `history`, `list_remote`, `setup_site`. Every write tool defaults to `execute=False`, so the agent has to opt in to change anything.
 
-**One-command setup for a specific agent**, run from the project
-directory you'll be deploying from:
+**One-command install:**
 
 ```bash
 safe-ftp-deploy install claude       # Claude Code
 safe-ftp-deploy install cursor       # Cursor
-safe-ftp-deploy install windsurf     # Windsurf (registers globally -- Windsurf has no project-level config)
+safe-ftp-deploy install windsurf     # Windsurf (global)
 safe-ftp-deploy install opencode     # OpenCode
 safe-ftp-deploy install antigravity  # Antigravity
-safe-ftp-deploy install all          # all of the above at once
+safe-ftp-deploy install all          # everything above
 ```
 
-This merges an MCP server entry into that agent's config file (existing
-entries are always preserved — it only ever adds/updates the
-`safe-ftp-deploy` entry, and refuses rather than overwrites if the file
-isn't valid JSON) and installs the safe-dry-run-then-confirm workflow
-guidance: a real skill for Claude Code
-(`.claude/skills/safe-ftp-deploy/SKILL.md`), or an `AGENTS.md` section for
-the others, since they don't have a native skill mechanism.
+This merges an MCP entry into the agent's config (existing entries are kept) and installs a skill that teaches the dry-run-first workflow.
 
-Prefer manual setup instead? Point your agent's MCP config at it directly:
+**Manual config:**
 
 ```json
 {"mcpServers": {"safe-ftp-deploy": {"command": "safe-ftp-deploy", "args": ["mcp"]}}}
 ```
 
-The skill content that `install claude` writes also ships as a plain file
-at [`skill/safe-ftp-deploy/SKILL.md`](skill/safe-ftp-deploy/SKILL.md) if
-you'd rather copy it yourself.
+### CLI with JSON output
 
-### Option 2: CLI subprocess
-
-If MCP isn't available, have the agent invoke the CLI directly with
-`--json` so it gets structured output instead of scraping text:
+No MCP? Have the agent call the CLI with `--json` for structured output, and leave off `--execute` so it gets a dry-run plan first.
 
 ```bash
 safe-ftp-deploy deploy --local ./index.php --remote /public_html/index.php --json
 ```
 
-(leave off `--execute` so the agent gets a dry-run plan first, then show
-the result to yourself before ever adding `--execute`)
+## Safety model
 
-If the agent also needs to provision a *new* site (not just deploy to an
-existing one), `setup-site --non-interactive` avoids it having to fake
-interactive prompts — see "Non-interactive / scripted setup" above. The
-MCP `setup_site` tool works the same way, non-interactively by design.
+| Guarantee | How |
+|---|---|
+| No file is ever deleted | The tool has no delete code path. Replaced files are renamed, not removed. |
+| No silent overwrite | Remote hash is checked against the last deploy. Mismatch aborts unless `--force`. |
+| No surprise writes | Dry-run is the default everywhere, including in MCP tools. |
+| No bad uploads | Every upload is re-downloaded and hashed. |
+| No wandering | Writes outside the directory whitelist are rejected. |
+| No plaintext credentials | Encrypted at rest, decrypted only in memory. |
 
-## Known limitation to keep in mind
+## Configuration
 
-The master password is prompted interactively each run (`getpass`) by
-default, so fully unattended/scheduled automation isn't set up here by
-default — that was intentional, to avoid unattended mishaps. `.ftpconfig`
-(below) and `setup-site --non-interactive` both opt back into unattended
-use deliberately, on a per-directory or per-command basis — the default
-stays interactive unless you explicitly set one of those up.
+### `.ftpconfig` (optional)
 
-### Optional: skip the prompt with `.ftpconfig`
+`setup-site` writes a `.ftpconfig` in the current directory:
 
-`setup-site` writes a `.ftpconfig` file in the directory you ran it from,
-containing the default site name (line 1) and the master password (line 2)
-for that project. Every other command reads it from the current directory,
-so once it exists you don't need to type the master password or pass
-`--name` again in that folder.
+- Line 1: default site name
+- Line 2: master password
 
+With it present you skip the password prompt and the `--name` flag in that folder. Delete it to go back to prompting.
+
+> [!WARNING]
+> This trades away the "password never touches disk" guarantee. The file is plain text. Don't back it up, copy it off the machine, or deploy it to the server. Add `.ftpconfig` to your `.gitignore`.
+
+### Migrating from `.masterpwd`
+
+The next `setup-site` run moves an old `.masterpwd` into `.ftpconfig` automatically. You can delete `.masterpwd` afterwards.
+
+## Development
+
+```bash
+uv sync
+uv run pytest
 ```
-myproject/.ftpconfig
-```
 
-**This trades away the tool's "password never touches disk" guarantee** —
-the file is plain text. Only use it if you've accepted that tradeoff:
-- Never back it up anywhere, never copy it off this machine, never let it
-  anywhere near the site being deployed to.
-- Delete the file (or empty it) to go back to interactive prompting and
-  explicit `--name` at any time.
-- It's a local convenience file, not a secret store — the actual FTP
-  credentials stay encrypted in `sites.enc` either way; this file only
-  unlocks that encryption and picks the default site.
+| File | Role |
+|---|---|
+| `safe_ftp.py` | CLI and core deploy logic |
+| `safe_ftp_mcp.py` | MCP server |
+| `safe_ftp_install.py` | `install` command for agent configs |
+| `safe_ftp_format.py` | Output formatting |
+| `skill/` | Agent skill installed by `install` |
+| `tests/` | Test suite |
 
-If you already have an old `.masterpwd` file from a previous version, the
-next `setup-site` run migrates it into `.ftpconfig` automatically and prints
-a note once that's done — you can delete `.masterpwd` after that.
+## Contributing
+
+Issues and pull requests are welcome.
+
+1. Fork the repo
+2. Create a branch: `git checkout -b feature/my-change`
+3. Add tests and run `uv run pytest`
+4. Commit and push
+5. Open a pull request
+
+Changes must keep the core promise: no delete path, no write without `--execute`.
+
+## License
+
+[MIT](LICENSE)
