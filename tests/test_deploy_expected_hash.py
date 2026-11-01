@@ -5,7 +5,7 @@ import safe_ftp
 
 class _FakeFTP:
     """Minimal in-memory FTP double supporting exactly what deploy_file and
-    download_file use: nlst, retrbinary, storbinary, rename, quit."""
+    download_file use: nlst, retrbinary, storbinary, rename, cwd, quit."""
 
     def __init__(self, files=None):
         self.files = dict(files or {})  # remote path -> bytes
@@ -23,6 +23,9 @@ class _FakeFTP:
 
     def rename(self, old, new):
         self.files[new] = self.files.pop(old)
+
+    def cwd(self, directory):
+        pass
 
     def quit(self):
         pass

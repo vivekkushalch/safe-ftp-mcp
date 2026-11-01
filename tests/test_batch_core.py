@@ -5,7 +5,7 @@ import safe_ftp
 
 class _FakeFTP:
     """Supports what batch_deploy_files/batch_download_files need: nlst,
-    retrbinary, storbinary, rename, mlsd (for _walk_remote_dir), quit."""
+    retrbinary, storbinary, rename, mlsd (for _walk_remote_dir), quit, cwd."""
 
     def __init__(self, files=None):
         self.files = dict(files or {})
@@ -38,6 +38,9 @@ class _FakeFTP:
             seen.add(name)
             entries.append((name, {"type": "file", "size": str(len(self.files[path]))}))
         return entries
+
+    def cwd(self, directory):
+        pass
 
     def quit(self):
         pass

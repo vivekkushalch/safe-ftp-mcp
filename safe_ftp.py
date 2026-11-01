@@ -67,7 +67,7 @@ import sys
 import tempfile
 import xml.etree.ElementTree as ET
 from datetime import datetime
-from ftplib import FTP, FTP_TLS, error_perm
+from ftplib import FTP, FTP_TLS, error_perm, all_errors
 
 from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
@@ -368,10 +368,45 @@ def _remote_file_exists(ftp: FTP, remote_path: str) -> bool:
     directory, filename = os.path.split(remote_path)
     try:
         listing = ftp.nlst(directory or ".")
-    except error_perm:
+    except all_errors:
+        # Some servers reply 550 (permanent, "no such directory") for this,
+        # others reply 450 (transient, "requested action not taken") for
+        # the exact same condition -- ftplib only classes 550 as error_perm,
+        # so a 450 on a not-yet-created directory used to escape uncaught.
+        # Either way the correct read here is the same: the listing failed,
+        # so the file can't be confirmed to exist.
         return False
     names = [os.path.basename(x) for x in listing]
     return filename in names
+
+
+def _ensure_remote_dir(ftp: FTP, remote_path: str) -> None:
+    """Create any missing intermediate directories for remote_path (mkdir -p
+    equivalent) -- FTP has no bulk-mkdir command. Walks the path one segment
+    at a time; a segment that already exists just fails its MKD, which is
+    ignored, since there's no portable way to distinguish "already exists"
+    from other errors and a real problem surfaces immediately on the STOR
+    that follows this call anyway."""
+    directory = os.path.dirname(remote_path)
+    if not directory or directory in ('.', '/'):
+        return
+    # Directory already there (the usual case): skip MKD entirely. On a slow
+    # link a failed MKD's "550 File exists" can arrive late and be read as the
+    # reply to the next command (TYPE I before STOR), aborting a new-file upload.
+    try:
+        ftp.cwd(directory)
+        return
+    except all_errors:
+        pass
+    is_absolute = directory.startswith('/')
+    parts = [p for p in directory.split('/') if p]
+    path = '/' if is_absolute else ''
+    for part in parts:
+        path = (path.rstrip('/') + '/' + part) if path else part
+        try:
+            ftp.mkd(path)
+        except all_errors:
+            pass
 
 
 def _download_to_temp(ftp: FTP, remote_path: str, progress_label: str = None) -> str:
@@ -425,9 +460,16 @@ def _is_within_allowed_dirs(remote_path: str, allowed_dirs: list) -> bool:
         # No whitelist configured -- allow, but this is discouraged; setup-site
         # will nudge the user to set one.
         return True
-    norm = os.path.normpath(remote_path)
+    norm = os.path.normpath(remote_path).replace("\\", "/")
     for allowed in allowed_dirs:
-        if norm.startswith(os.path.normpath(allowed)):
+        allowed_norm = os.path.normpath(allowed).replace("\\", "/")
+        # ".", "/", and "" all mean "the whole site root" -- match everything,
+        # matching what a user typing "." at the allowed-dirs prompt expects.
+        if allowed_norm in (".", "/", ""):
+            return True
+        # Path-boundary match, not a raw string prefix: "images" must not
+        # match "images2/foo.png".
+        if norm == allowed_norm or norm.startswith(allowed_norm + "/"):
             return True
     return False
 
@@ -586,6 +628,8 @@ def deploy_file(site_name: str, site: dict, local_path: str, remote_path: str,
             return result
 
         # --- Actual execution below. Rename first (this IS the backup step). ---
+        if not exists:
+            _ensure_remote_dir(ftp, remote_path)
         if exists:
             ftp.rename(remote_path, backup_path)
 
