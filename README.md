@@ -10,6 +10,12 @@ It never deletes, it refuses to overwrite files that changed behind its back, an
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![MCP](https://img.shields.io/badge/MCP-server-8A2BE2.svg)](https://modelcontextprotocol.io)
 
+<a href="#use-with-an-ai-agent"><img src="https://img.shields.io/badge/MCP-server-8A2BE2?style=for-the-badge" alt="MCP server"></a>
+<a href="#usage"><img src="https://img.shields.io/badge/CLI-safe--ftp--deploy-2563EB?style=for-the-badge" alt="CLI"></a>
+<a href="#connect-an-agent"><img src="https://img.shields.io/badge/AI%20agent-skill-F97316?style=for-the-badge" alt="AI agent skill"></a>
+
+<sub>One tool, three ways in: an MCP server for agents, a CLI for you, and a skill that teaches agents the rules.</sub>
+
 [Quick start](#quick-start) ·
 [Use with an AI agent](#use-with-an-ai-agent) ·
 [How it works](#how-it-works) ·
