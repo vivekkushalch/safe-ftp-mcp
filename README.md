@@ -33,7 +33,7 @@ Paste this line into any AI coding agent (Claude Code, Cursor, Windsurf, OpenCod
 Install safe-ftp-deploy by following https://raw.githubusercontent.com/vivekkushalch/safe_ftp/main/INSTALL.md
 ```
 
-The agent reads [INSTALL.md](INSTALL.md), installs the tool, registers the MCP server for itself, and learns the rules, the 8 MCP tools, the CLI and how to read results. It then asks you to run `safe-ftp-deploy setup-site` yourself, so your FTP password never goes through the chat.
+The agent reads [INSTALL.md](INSTALL.md), installs the tool, registers the MCP server for itself, and learns the rules, the 8 MCP tools, the CLI and how to read results. It also installs the bundled [`safe-ftp-deploy` skill](skill/safe-ftp-deploy/SKILL.md), which teaches the dry-run-first workflow. Claude Code gets it as a skill file. Cursor, Windsurf, OpenCode and Antigravity get the same guidance in `AGENTS.md`. The agent then asks you to run `safe-ftp-deploy setup-site` yourself, so your FTP password never goes through the chat.
 
 **Without an agent.** Install it yourself. This needs [uv](https://docs.astral.sh/uv/getting-started/installation/).
 
@@ -42,7 +42,7 @@ uv tool install git+https://github.com/vivekkushalch/safe_ftp.git
 safe-ftp-deploy setup-site --name mysite
 ```
 
-Then connect an agent with `safe-ftp-deploy install <claude|cursor|windsurf|opencode|antigravity>`, or add this entry to any MCP client:
+Then connect an agent with `safe-ftp-deploy install <claude|cursor|windsurf|opencode|antigravity>`. That adds the MCP server and the skill (or `AGENTS.md` guidance). For any other MCP client, add this entry yourself:
 
 ```json
 {"mcpServers": {"safe-ftp-deploy": {"command": "safe-ftp-deploy", "args": ["mcp"]}}}
