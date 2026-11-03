@@ -28,9 +28,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/vivekkushalch/safe_ftp"
-Issues = "https://github.com/vivekkushalch/safe_ftp/issues"
-Changelog = "https://github.com/vivekkushalch/safe_ftp/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/vivekkushalch/safe-ftp-mcp"
+Issues = "https://github.com/vivekkushalch/safe-ftp-mcp/issues"
+Changelog = "https://github.com/vivekkushalch/safe-ftp-mcp/blob/main/CHANGELOG.md"
 
 [project.scripts]
 safe-ftp-deploy = "safe_ftp:main"

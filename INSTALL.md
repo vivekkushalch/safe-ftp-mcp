@@ -23,7 +23,7 @@ Check what exists before installing.
 3. Install the tool:
 
 ```bash
-uv tool install git+https://github.com/vivekkushalch/safe_ftp.git
+uv tool install git+https://github.com/vivekkushalch/safe-ftp-mcp.git
 ```
 
 4. Run `safe-ftp-deploy --version` again to confirm. If the command is not found, run `uv tool update-shell`, then tell the user to open a new terminal.
@@ -141,7 +141,7 @@ To undo a deploy, `history` shows the backup name. Restoring means renaming the 
 If the user has Docker and no Python, build the image and run the MCP server over stdio. Credentials live in a named volume.
 
 ```bash
-docker build -t safe-ftp-deploy https://github.com/vivekkushalch/safe_ftp.git
+docker build -t safe-ftp-deploy https://github.com/vivekkushalch/safe-ftp-mcp.git
 docker run --rm -it -v safe-ftp-data:/home/app/.safe_ftp_deploy -v "$PWD":/work safe-ftp-deploy setup-site --name <site-name>
 ```
 

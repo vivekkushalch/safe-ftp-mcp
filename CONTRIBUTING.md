@@ -16,8 +16,8 @@ PRs that weaken either will not be merged.
 Requires [uv](https://docs.astral.sh/uv/getting-started/installation/) and Python 3.10+.
 
 ```bash
-git clone https://github.com/vivekkushalch/safe_ftp.git
-cd safe_ftp
+git clone https://github.com/vivekkushalch/safe-ftp-mcp.git
+cd safe-ftp-mcp
 uv sync
 uv run pytest
 uv run safe-ftp-deploy --help

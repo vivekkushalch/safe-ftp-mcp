@@ -5,7 +5,7 @@
 **FTP deploys you can hand to an AI agent.**<br>
 It never deletes, it refuses to overwrite files that changed behind its back, and it does nothing until you say `--execute`.
 
-[![CI](https://github.com/vivekkushalch/safe_ftp/actions/workflows/ci.yml/badge.svg)](https://github.com/vivekkushalch/safe_ftp/actions/workflows/ci.yml)
+[![CI](https://github.com/vivekkushalch/safe-ftp-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/vivekkushalch/safe-ftp-mcp/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![MCP](https://img.shields.io/badge/MCP-server-8A2BE2.svg)](https://modelcontextprotocol.io)
@@ -30,7 +30,7 @@ It never deletes, it refuses to overwrite files that changed behind its back, an
 Paste this line into any AI coding agent (Claude Code, Cursor, Windsurf, OpenCode, Antigravity, or anything that can fetch a URL and run commands):
 
 ```text
-Install safe-ftp-deploy by following https://raw.githubusercontent.com/vivekkushalch/safe_ftp/main/INSTALL.md
+Install safe-ftp-deploy by following https://raw.githubusercontent.com/vivekkushalch/safe-ftp-mcp/main/INSTALL.md
 ```
 
 The agent reads [INSTALL.md](INSTALL.md), installs the tool, registers the MCP server for itself, and learns the rules, the 8 MCP tools, the CLI and how to read results. It also installs the bundled [`safe-ftp-deploy` skill](skill/safe-ftp-deploy/SKILL.md), which teaches the dry-run-first workflow. Claude Code gets it as a skill file. Cursor, Windsurf, OpenCode and Antigravity get the same guidance in `AGENTS.md`. The agent then asks you to run `safe-ftp-deploy setup-site` yourself, so your FTP password never goes through the chat.
@@ -38,7 +38,7 @@ The agent reads [INSTALL.md](INSTALL.md), installs the tool, registers the MCP s
 **Without an agent.** Install it yourself. This needs [uv](https://docs.astral.sh/uv/getting-started/installation/).
 
 ```bash
-uv tool install git+https://github.com/vivekkushalch/safe_ftp.git
+uv tool install git+https://github.com/vivekkushalch/safe-ftp-mcp.git
 safe-ftp-deploy setup-site --name mysite
 ```
 
@@ -359,7 +359,7 @@ Run `history --remote <path>` to find the backup name, then rename the backup ba
 The image has the CLI and the MCP server and needs no local Python. Build it once:
 
 ```bash
-docker build -t safe-ftp-deploy https://github.com/vivekkushalch/safe_ftp.git
+docker build -t safe-ftp-deploy https://github.com/vivekkushalch/safe-ftp-mcp.git
 ```
 
 Credentials are encrypted into `/home/app/.safe_ftp_deploy`, so keep that folder in a named volume. Your project goes in `/work`.
@@ -383,8 +383,8 @@ To use it as an MCP server, run the container over stdio:
 ## Development
 
 ```bash
-git clone https://github.com/vivekkushalch/safe_ftp.git
-cd safe_ftp
+git clone https://github.com/vivekkushalch/safe-ftp-mcp.git
+cd safe-ftp-mcp
 uv sync
 uv run pytest
 ```

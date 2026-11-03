@@ -10,7 +10,7 @@ Only the latest release on `main` receives security fixes.
 
 Please **do not open a public issue** for security problems.
 
-Use GitHub's private reporting: **Security → Report a vulnerability** on the [repository page](https://github.com/vivekkushalch/safe_ftp/security/advisories/new).
+Use GitHub's private reporting: **Security → Report a vulnerability** on the [repository page](https://github.com/vivekkushalch/safe-ftp-mcp/security/advisories/new).
 
 Include what you found, steps to reproduce, and the impact. You can expect an acknowledgement within a few days and a fix or mitigation plan after triage.
 
