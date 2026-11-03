@@ -8,7 +8,6 @@ It never deletes, it refuses to overwrite files that changed behind its back, an
 [![CI](https://github.com/vivekkushalch/safe-ftp-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/vivekkushalch/safe-ftp-mcp/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![MCP](https://img.shields.io/badge/MCP-server-8A2BE2.svg)](https://modelcontextprotocol.io)
 
 <a href="#use-with-an-ai-agent"><img src="https://img.shields.io/badge/MCP-server-8A2BE2?style=for-the-badge" alt="MCP server"></a>
 <a href="#usage"><img src="https://img.shields.io/badge/CLI-safe--ftp--deploy-2563EB?style=for-the-badge" alt="CLI"></a>
@@ -27,7 +26,7 @@ It never deletes, it refuses to overwrite files that changed behind its back, an
 </div>
 
 <p align="center">
-  <img src="assets/demo.svg" alt="Terminal demo: a dry-run deploy, a verified deploy, then a drift-detected refusal" width="820">
+  <img src="assets/demo.svg" alt="Terminal demo in 5 steps: ask an agent to deploy, confirm, drift caught, whitelist block, history and undo" width="820">
 </p>
 
 
