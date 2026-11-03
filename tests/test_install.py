@@ -171,3 +171,11 @@ def test_install_agent_all_runs_every_target(tmp_path):
 def test_install_agent_unknown_target_raises_system_exit(tmp_path):
     with pytest.raises(SystemExit):
         install.install_agent("not-a-real-agent", cwd=str(tmp_path))
+
+
+def test_embedded_skill_matches_skill_file():
+    import pathlib
+
+    skill_file = pathlib.Path(__file__).parent.parent / "skill" / "safe-ftp-deploy" / "SKILL.md"
+    on_disk = skill_file.read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert on_disk == install.SKILL_MD_CONTENT

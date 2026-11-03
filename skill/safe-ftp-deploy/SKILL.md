@@ -82,12 +82,42 @@ project's default.
    `blocked` result go away.** If a path is outside the site's configured
    whitelist, that's a deliberate restriction set by the human who ran
    `setup_site` — ask them, don't work around it.
-6. **`setup_site` needs real values for every field** (host, username,
-   password, etc.) since there's no terminal to prompt on. If you don't
-   have the FTP credentials, ask the user rather than inventing
-   placeholders. Prefer pointing at a FileZilla export
-   (`from_filezilla`) over asking the user to retype credentials they've
-   already saved elsewhere, when one is available.
+6. **Don't collect FTP passwords in chat.** If no site is configured,
+   tell the user to run `safe-ftp-deploy setup-site --name <site>` in
+   their own terminal, or to point it at a FileZilla export with
+   `--from-filezilla`. Use the `setup_site` tool only when the user has
+   deliberately given you every value, and never invent placeholders.
+7. **Never turn off TLS verification.** FTPS certificates are verified by
+   default. `--insecure-tls` is a human decision made at setup and is not
+   exposed through MCP. If a connection fails on certificate
+   verification, tell the user and let them decide.
+
+## Editing a file that lives on the server
+
+Download it with `download` and note the `hash` in the result. Edit the
+local copy, then call `deploy` with `expected_hash` set to that hash. If
+someone changed the server file in between, you get `stale_download` and
+nothing is written. Download the current version again and redo the edit.
+
+## Reading results
+
+| Status | What to do |
+|---|---|
+| `dry_run` | Show the plan, ask the user to confirm |
+| `success` | Report it and the backup name |
+| `no_change` | Tell the user the files are identical, nothing to do |
+| `blocked` | Relay it, ask the user. Don't work around it |
+| `drift_detected` | Show both hashes, ask the user. No `force` on your own |
+| `stale_download` | Download again, re-apply the edit, deploy again |
+| `upload_verification_failed` | Report it. The old file is safe under its backup name. Don't retry blindly |
+| `error` | Report the message |
+
+`status` returns `no_history` for a file the tool has never deployed. That
+means there is no recorded hash to compare against, not that it is safe.
+
+To undo a deploy, `history` gives the backup name of each one. There is no
+rollback command, so tell the user to rename the backup back on the server
+in their FTP client.
 
 ## Common mistakes to avoid
 
@@ -99,3 +129,4 @@ project's default.
   `summary_markdown` (which is already built to highlight what matters).
 - Setting `force=True` because a `drift_detected`/`stale_download` result
   was inconvenient, instead of surfacing it and asking.
+- Asking the user to paste FTP or master passwords into the chat.

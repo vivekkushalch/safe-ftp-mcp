@@ -6,6 +6,7 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
 
 ### Added
 - TLS certificate and hostname verification for FTPS, on by default; `setup-site --insecure-tls` opts out for trusted self-signed hosts.
+- Agent skill and `AGENTS.md` guidance now cover TLS, password handling, the expected-hash edit workflow and result statuses.
 - Project logo, `SECURITY.md`, `CONTRIBUTING.md`, GitHub Actions CI.
 
 ### Changed
