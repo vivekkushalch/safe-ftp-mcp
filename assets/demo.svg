@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 386" width="860" height="386" role="img" aria-label="Terminal: a dry-run deploy, then a drift-detected refusal">
+  <style>
+    text { font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace; font-size: 14px; fill: #c9d1d9; white-space: pre; }
+    .prompt { fill: #7ee787; }
+    .cmd { fill: #e6edf3; }
+    .flag { fill: #79c0ff; }
+    .path { fill: #ffa657; }
+    .dim { fill: #8b949e; }
+    .head { fill: #e6edf3; font-weight: 700; }
+    .dry { fill: #d2a8ff; font-weight: 700; }
+    .warn { fill: #f0883e; font-weight: 700; }
+    .bad { fill: #ff7b72; }
+    .ok { fill: #7ee787; }
+  </style>
+  <rect width="860" height="386" rx="10" fill="#0d1117"/>
+  <rect width="860" height="34" rx="10" fill="#161b22"/>
+  <rect y="24" width="860" height="10" fill="#161b22"/>
+  <circle cx="22" cy="17" r="6" fill="#ff5f56"/><circle cx="42" cy="17" r="6" fill="#ffbd2e"/><circle cx="62" cy="17" r="6" fill="#27c93f"/>
+
+  <text x="20" y="66"><tspan class="prompt">$ </tspan><tspan class="cmd">safe-ftp-deploy deploy </tspan><tspan class="flag">--local</tspan> <tspan class="path">./index.php</tspan> <tspan class="flag">--remote</tspan> <tspan class="path">/public_html/index.php</tspan></text>
+
+  <text x="20" y="100"><tspan class="head">Deploy: </tspan><tspan class="path">./index.php</tspan><tspan class="dim"> → </tspan><tspan class="path">/public_html/index.php</tspan></text>
+  <text x="20" y="124"><tspan class="dry">DRY RUN</tspan><tspan> — Would rename remote </tspan><tspan class="path">'/public_html/index.php'</tspan><tspan> -&gt; </tspan><tspan class="path">'/public_html/index_&lt;timestamp&gt;.php'</tspan><tspan>,</tspan></text>
+  <text x="20" y="144"><tspan>          then upload local </tspan><tspan class="path">'./index.php'</tspan><tspan> as </tspan><tspan class="path">'/public_html/index.php'</tspan><tspan>.</tspan></text>
+  <text x="20" y="164"><tspan>          Re-run with </tspan><tspan class="flag">--execute</tspan><tspan> to apply.</tspan></text>
+  <text x="20" y="188"><tspan class="dim">- Backup: </tspan><tspan class="path">/public_html/index_&lt;timestamp&gt;.php</tspan></text>
+
+  <line x1="20" y1="210" x2="840" y2="210" stroke="#30363d"/>
+
+  <text x="20" y="240"><tspan class="prompt">$ </tspan><tspan class="cmd">safe-ftp-deploy deploy </tspan><tspan class="flag">--local</tspan> <tspan class="path">./index.php</tspan> <tspan class="flag">--remote</tspan> <tspan class="path">/public_html/index.php</tspan> <tspan class="flag">--execute</tspan></text>
+
+  <text x="20" y="274"><tspan class="head">Deploy: </tspan><tspan class="path">./index.php</tspan><tspan class="dim"> → </tspan><tspan class="path">/public_html/index.php</tspan></text>
+  <text x="20" y="298"><tspan class="warn">DRIFT DETECTED</tspan><tspan> — The file on the server has changed since the last deploy.</tspan></text>
+  <text x="20" y="318"><tspan>                 </tspan><tspan class="bad">Refusing to overwrite.</tspan><tspan> Review it, or re-run with </tspan><tspan class="flag">--force</tspan><tspan>.</tspan></text>
+  <text x="20" y="342"><tspan class="dim">- Last known hash:      </tspan><tspan class="ok">a41f9c0e</tspan></text>
+  <text x="20" y="362"><tspan class="dim">- Current remote hash:  </tspan><tspan class="bad">7be20d15</tspan></text>
+</svg>

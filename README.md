@@ -24,15 +24,67 @@ Safe FTP Deploy is a drop-in replacement for the manual "rename old file, upload
 
 That makes it safe to expose to an AI coding agent. The tool decides *how* a deploy happens, whatever the agent asks for.
 
-```text
-$ safe-ftp-deploy deploy --local ./index.php --remote /public_html/index.php
+<p align="center">
+  <img src="assets/demo.svg" alt="Terminal showing a dry-run deploy, then a drift-detected refusal" width="820">
+</p>
 
-Deploy: ./index.php → /public_html/index.php
+<sub>Layout follows the tool's real messages; hashes and timestamps are illustrative.</sub>
 
-📝 Dry run — [DRY RUN] Would rename remote '/public_html/index.php' -> '/public_html/index_<timestamp>.php',
-then upload local './index.php' as '/public_html/index.php'. Re-run with --execute to apply.
-- Backup: /public_html/index_<timestamp>.php
+## Use it with your AI agent
+
+Install the tool once, then wire it into your agent with one command. Click the copy button on any block below.
+
+**1. Install the tool**
+
+```bash
+uv tool install git+https://github.com/vivekkushalch/safe_ftp.git
 ```
+
+**2. Connect your agent** (adds the MCP server and the bundled skill)
+
+```bash
+safe-ftp-deploy install claude       # Claude Code
+```
+
+```bash
+safe-ftp-deploy install cursor       # Cursor
+```
+
+```bash
+safe-ftp-deploy install windsurf     # Windsurf
+```
+
+```bash
+safe-ftp-deploy install opencode     # OpenCode
+```
+
+```bash
+safe-ftp-deploy install antigravity  # Antigravity
+```
+
+```bash
+safe-ftp-deploy install all          # all of them
+```
+
+**3. Or paste this prompt into your agent and let it do the setup**
+
+```text
+Set up safe-ftp-deploy for yourself.
+
+1. Run: uv tool install git+https://github.com/vivekkushalch/safe_ftp.git
+2. Run: safe-ftp-deploy install <claude|cursor|windsurf|opencode|antigravity>
+   (pick the one that matches the agent you are), then tell me to restart or
+   reload my MCP servers.
+
+Rules whenever you deploy or download over FTP with it:
+- Always do a dry-run first (execute=False) and show me the summary_markdown.
+- Only run again with execute=True after I confirm.
+- Never use force, and never disable TLS verification, unless I explicitly ask.
+- Don't ask me to paste FTP or master passwords into this chat. If no site is
+  configured, tell me to run `safe-ftp-deploy setup-site --name <site>` myself.
+```
+
+Prefer to set it up by hand? Jump to [AI agent integration](#ai-agent-integration).
 
 ## Why not just use FileZilla or raw FTP?
 
