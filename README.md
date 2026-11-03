@@ -27,27 +27,28 @@ It never deletes, it refuses to overwrite files that changed behind its back, an
 
 ## Install
 
-One line installs the tool and registers it with your agent. Run it in your project folder.
+Paste this line into any AI coding agent (Claude Code, Cursor, Windsurf, OpenCode, Antigravity, or anything that can fetch a URL and run commands):
 
-```bash
-uv tool install git+https://github.com/vivekkushalch/safe_ftp.git && safe-ftp-deploy install claude
+```text
+Install safe-ftp-deploy by following https://raw.githubusercontent.com/vivekkushalch/safe_ftp/main/INSTALL.md
 ```
 
-Replace `claude` with `cursor`, `windsurf`, `opencode` or `antigravity`. It needs [uv](https://docs.astral.sh/uv/getting-started/installation/). On Windows PowerShell 5.1, use `;` instead of `&&`.
+The agent reads [INSTALL.md](INSTALL.md), installs the tool, registers the MCP server for itself, and learns the rules, the 8 MCP tools, the CLI and how to read results. It then asks you to run `safe-ftp-deploy setup-site` yourself, so your FTP password never goes through the chat.
 
-Restart your agent, then save your FTP login once. Type passwords in the terminal, not in the agent chat.
+**Without an agent.** Install it yourself. This needs [uv](https://docs.astral.sh/uv/getting-started/installation/).
 
 ```bash
+uv tool install git+https://github.com/vivekkushalch/safe_ftp.git
 safe-ftp-deploy setup-site --name mysite
 ```
 
-**MCP setup.** `install` adds this server entry to your agent's config. If your client is not on the list, add it yourself:
+Then connect an agent with `safe-ftp-deploy install <claude|cursor|windsurf|opencode|antigravity>`, or add this entry to any MCP client:
 
 ```json
 {"mcpServers": {"safe-ftp-deploy": {"command": "safe-ftp-deploy", "args": ["mcp"]}}}
 ```
 
-**Docker.** No Python needed. See [Run with Docker](#run-with-docker).
+No Python? See [Run with Docker](#run-with-docker).
 
 ## Overview
 
@@ -94,25 +95,9 @@ After the tool is installed, run one command per agent inside the project folder
 
 Existing config entries are kept. Restart your agent or reload its MCP servers afterward.
 
-### Or let the agent set itself up
+### Let the agent set itself up
 
-Paste this into your agent.
-
-```text
-Set up safe-ftp-deploy for yourself.
-
-1. Run: uv tool install git+https://github.com/vivekkushalch/safe_ftp.git
-2. Run: safe-ftp-deploy install <claude|cursor|windsurf|opencode|antigravity>
-   (pick the one that matches the agent you are), then tell me to restart or
-   reload my MCP servers.
-
-Rules whenever you deploy or download over FTP with it:
-- Always do a dry-run first (execute=False) and show me the summary_markdown.
-- Only run again with execute=True after I confirm.
-- Never use force unless I explicitly ask.
-- Don't ask me to paste FTP or master passwords into this chat. If no site is
-  configured, tell me to run `safe-ftp-deploy setup-site --name <site>` myself.
-```
+Give your agent the line from [Install](#install). [INSTALL.md](INSTALL.md) is written for agents. It covers installation, which config file to write for each agent, the rules to follow, every MCP tool and CLI command, how to read each result status, and troubleshooting.
 
 ### MCP tools
 
@@ -360,6 +345,7 @@ The CLI and the MCP server are two front ends over one core. Both call the same 
 | `safe_ftp_format.py` | ~250 | Turns result dicts into Markdown. The CLI renders it with `rich`, MCP returns it as text |
 | `safe_ftp_install.py` | ~300 | `install` command. Merges MCP entries into agent configs and writes guidance |
 | `skill/safe-ftp-deploy/SKILL.md` | | The agent skill, copied into `.claude/skills` for Claude Code |
+| `INSTALL.md` | | Setup and usage guide written for AI agents |
 | `Dockerfile` | | Container image for the CLI and the MCP server |
 | `tests/` | | 17 test modules. No real FTP server is needed |
 
