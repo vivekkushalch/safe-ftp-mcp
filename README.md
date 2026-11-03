@@ -120,28 +120,9 @@ No MCP in your agent? Call the CLI with `--json` for structured output and leave
 
 Every deploy runs the same sequence. Each check can stop it, and nothing is written before the rename step.
 
-```mermaid
-flowchart TD
-    A(["deploy local to remote"]) --> B{"Local file exists?"}
-    B -- "no" --> E1["error"]
-    B -- "yes" --> C{"Remote path in whitelist?"}
-    C -- "no" --> E2["blocked"]
-    C -- "yes" --> D["Connect over FTPS, hash the remote file"]
-    D --> F{"Remote already equals local?"}
-    F -- "yes" --> N1["no_change"]
-    F -- "no" --> G{"Differs from --expected-hash?"}
-    G -- "yes, and no --force" --> E3["stale_download"]
-    G -- "no" --> H{"Differs from last deploy?"}
-    H -- "yes, and no --force" --> E4["drift_detected"]
-    H -- "no" --> I{"--execute given?"}
-    I -- "no" --> N2["dry_run: print the plan"]
-    I -- "yes" --> J["Rename remote file to backup"]
-    J --> K["Upload new file"]
-    K --> L["Download again and compare hashes"]
-    L -- "mismatch" --> E5["upload_verification_failed"]
-    L -- "match" --> M["Record hash and history entry"]
-    M --> S(["success"])
-```
+<p align="center">
+  <img src="assets/deploy-flow.svg" alt="Deploy pipeline: five checks that can stop a deploy, then rename, upload, verify and record" width="860">
+</p>
 
 If verification fails, the old file is still on the server under the backup name.
 
