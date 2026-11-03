@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/logo.svg" alt="Safe FTP MCP" width="420">
+<img src="assets/logo.svg" alt="Safe FTP" width="420">
 
 **FTP deploys you can hand to an AI agent.**<br>
 It never deletes, it refuses to overwrite files that changed behind its back, and it does nothing until you say `--execute`.
@@ -25,6 +25,18 @@ It never deletes, it refuses to overwrite files that changed behind its back, an
 </p>
 
 <sub>Text follows the tool's real messages. Hashes and timestamps are made up.</sub>
+
+## Install
+
+One line installs the tool and connects it to your agent. Run it in your project folder.
+
+```bash
+uv tool install git+https://github.com/vivekkushalch/safe_ftp.git && safe-ftp-deploy install claude
+```
+
+Swap `claude` for `cursor`, `windsurf`, `opencode` or `antigravity`. Needs [uv](https://docs.astral.sh/uv/getting-started/installation/). On Windows PowerShell 5.1, use `;` instead of `&&`.
+
+Then restart your agent, and run `safe-ftp-deploy setup-site --name mysite` once to save your FTP login. Passwords go in the terminal, never in the chat.
 
 ## Overview
 
@@ -71,32 +83,44 @@ Update with `uv tool upgrade safe-ftp-deploy`.
 
 Give the agent this tool instead of raw FTP access. The tool enforces the rules, so the agent cannot skip them by asking for something else.
 
-### Install for your agent
+### One-line install per agent
 
-Run the command for your agent inside the project folder. Each block has its own copy button.
+Each line installs the tool and connects that agent. Run it inside the project folder. Each block has its own copy button.
+
+**Claude Code**
 
 ```bash
-safe-ftp-deploy install claude
+uv tool install git+https://github.com/vivekkushalch/safe_ftp.git && safe-ftp-deploy install claude
 ```
 
-```bash
-safe-ftp-deploy install cursor
-```
+**Cursor**
 
 ```bash
-safe-ftp-deploy install windsurf
+uv tool install git+https://github.com/vivekkushalch/safe_ftp.git && safe-ftp-deploy install cursor
 ```
 
-```bash
-safe-ftp-deploy install opencode
-```
+**Windsurf**
 
 ```bash
-safe-ftp-deploy install antigravity
+uv tool install git+https://github.com/vivekkushalch/safe_ftp.git && safe-ftp-deploy install windsurf
 ```
 
+**OpenCode**
+
 ```bash
-safe-ftp-deploy install all
+uv tool install git+https://github.com/vivekkushalch/safe_ftp.git && safe-ftp-deploy install opencode
+```
+
+**Antigravity**
+
+```bash
+uv tool install git+https://github.com/vivekkushalch/safe_ftp.git && safe-ftp-deploy install antigravity
+```
+
+**All five**
+
+```bash
+uv tool install git+https://github.com/vivekkushalch/safe_ftp.git && safe-ftp-deploy install all
 ```
 
 Existing config entries are kept. The command writes these files:
