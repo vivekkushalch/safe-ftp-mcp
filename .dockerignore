@@ -1,0 +1,14 @@
+.git
+.github
+.venv
+.private
+.pytest_cache
+__pycache__
+*.pyc
+build
+dist
+*.egg-info
+.ftpconfig
+.masterpwd
+tests
+assets

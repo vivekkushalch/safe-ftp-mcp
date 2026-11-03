@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/logo.svg" alt="Safe FTP" width="420">
+<img src="assets/logo.svg" alt="Safe FTP MCP" width="420">
 
 **FTP deploys you can hand to an AI agent.**<br>
 It never deletes, it refuses to overwrite files that changed behind its back, and it does nothing until you say `--execute`.
@@ -24,19 +24,30 @@ It never deletes, it refuses to overwrite files that changed behind its back, an
   <img src="assets/demo.svg" alt="Terminal demo: a dry-run deploy, a verified deploy, then a drift-detected refusal" width="820">
 </p>
 
-<sub>Text follows the tool's real messages. Hashes and timestamps are made up.</sub>
 
 ## Install
 
-One line installs the tool and connects it to your agent. Run it in your project folder.
+One line installs the tool and registers it with your agent. Run it in your project folder.
 
 ```bash
 uv tool install git+https://github.com/vivekkushalch/safe_ftp.git && safe-ftp-deploy install claude
 ```
 
-Swap `claude` for `cursor`, `windsurf`, `opencode` or `antigravity`. Needs [uv](https://docs.astral.sh/uv/getting-started/installation/). On Windows PowerShell 5.1, use `;` instead of `&&`.
+Replace `claude` with `cursor`, `windsurf`, `opencode` or `antigravity`. It needs [uv](https://docs.astral.sh/uv/getting-started/installation/). On Windows PowerShell 5.1, use `;` instead of `&&`.
 
-Then restart your agent, and run `safe-ftp-deploy setup-site --name mysite` once to save your FTP login. Passwords go in the terminal, never in the chat.
+Restart your agent, then save your FTP login once. Type passwords in the terminal, not in the agent chat.
+
+```bash
+safe-ftp-deploy setup-site --name mysite
+```
+
+**MCP setup.** `install` adds this server entry to your agent's config. If your client is not on the list, add it yourself:
+
+```json
+{"mcpServers": {"safe-ftp-deploy": {"command": "safe-ftp-deploy", "args": ["mcp"]}}}
+```
+
+**Docker.** No Python needed. See [Run with Docker](#run-with-docker).
 
 ## Overview
 
@@ -56,88 +67,32 @@ Plain FTP and FTPS only. SFTP is not supported.
 
 ## Quick start
 
-You need [uv](https://docs.astral.sh/uv/getting-started/installation/) and Python 3.10 or newer. It runs on Windows, macOS and Linux.
-
-**1. Install**
-
-```bash
-uv tool install git+https://github.com/vivekkushalch/safe_ftp.git
-```
-
-**2. Save a site.** Run this in your project folder. You are asked for a master password, the FTP host, port, username and password, and the remote directories the tool may touch.
-
-```bash
-safe-ftp-deploy setup-site --name mysite
-```
-
-**3. Deploy.** Without `--execute` you get a plan and nothing changes.
+After [installing](#install) and running `setup-site`, deploy a file. Without `--execute` you get a plan and nothing changes.
 
 ```bash
 safe-ftp-deploy deploy --local ./index.php --remote /public_html/index.php
 safe-ftp-deploy deploy --local ./index.php --remote /public_html/index.php --execute
 ```
 
-Update with `uv tool upgrade safe-ftp-deploy`.
+`setup-site` asks for a master password, the FTP host, port, username and password, and the remote directories the tool may touch. Update the tool later with `uv tool upgrade safe-ftp-deploy`.
 
 ## Use with an AI agent
 
 Give the agent this tool instead of raw FTP access. The tool enforces the rules, so the agent cannot skip them by asking for something else.
 
-### One-line install per agent
+### Connect an agent
 
-Each line installs the tool and connects that agent. Run it inside the project folder. Each block has its own copy button.
+After the tool is installed, run one command per agent inside the project folder. Use `all` to do every agent at once.
 
-**Claude Code**
+| Agent | Command | MCP config written | Guidance written |
+|---|---|---|---|
+| Claude Code | `safe-ftp-deploy install claude` | `.mcp.json` | `.claude/skills/safe-ftp-deploy/SKILL.md` |
+| Cursor | `safe-ftp-deploy install cursor` | `.cursor/mcp.json` | `AGENTS.md` |
+| Windsurf | `safe-ftp-deploy install windsurf` | `~/.codeium/windsurf/mcp_config.json` (global) | `AGENTS.md` |
+| OpenCode | `safe-ftp-deploy install opencode` | `opencode.json` | `AGENTS.md` |
+| Antigravity | `safe-ftp-deploy install antigravity` | `.agents/mcp_config.json` | `AGENTS.md` |
 
-```bash
-uv tool install git+https://github.com/vivekkushalch/safe_ftp.git && safe-ftp-deploy install claude
-```
-
-**Cursor**
-
-```bash
-uv tool install git+https://github.com/vivekkushalch/safe_ftp.git && safe-ftp-deploy install cursor
-```
-
-**Windsurf**
-
-```bash
-uv tool install git+https://github.com/vivekkushalch/safe_ftp.git && safe-ftp-deploy install windsurf
-```
-
-**OpenCode**
-
-```bash
-uv tool install git+https://github.com/vivekkushalch/safe_ftp.git && safe-ftp-deploy install opencode
-```
-
-**Antigravity**
-
-```bash
-uv tool install git+https://github.com/vivekkushalch/safe_ftp.git && safe-ftp-deploy install antigravity
-```
-
-**All five**
-
-```bash
-uv tool install git+https://github.com/vivekkushalch/safe_ftp.git && safe-ftp-deploy install all
-```
-
-Existing config entries are kept. The command writes these files:
-
-| Agent | MCP config | Guidance |
-|---|---|---|
-| Claude Code | `.mcp.json` | `.claude/skills/safe-ftp-deploy/SKILL.md` |
-| Cursor | `.cursor/mcp.json` | `AGENTS.md` |
-| Windsurf | `~/.codeium/windsurf/mcp_config.json` (global) | `AGENTS.md` |
-| OpenCode | `opencode.json` | `AGENTS.md` |
-| Antigravity | `.agents/mcp_config.json` | `AGENTS.md` |
-
-Restart your agent or reload its MCP servers afterward. To wire it up by hand, add this server entry:
-
-```json
-{"mcpServers": {"safe-ftp-deploy": {"command": "safe-ftp-deploy", "args": ["mcp"]}}}
-```
+Existing config entries are kept. Restart your agent or reload its MCP servers afterward.
 
 ### Or let the agent set itself up
 
@@ -182,25 +137,25 @@ Every deploy runs the same sequence. Each check can stop it, and nothing is writ
 
 ```mermaid
 flowchart TD
-    A([deploy local to remote]) --> B{Local file exists?}
-    B -- no --> E1[error]
-    B -- yes --> C{Remote path in whitelist?}
-    C -- no --> E2[blocked]
-    C -- yes --> D[Connect over FTPS, hash the remote file]
-    D --> F{Remote already equals local?}
-    F -- yes --> N1[no_change]
-    F -- no --> G{Hash differs from --expected-hash?}
-    G -- yes, no --force --> E3[stale_download]
-    G -- no --> H{Hash differs from last deploy?}
-    H -- yes, no --force --> E4[drift_detected]
-    H -- no --> I{--execute given?}
-    I -- no --> N2[dry_run: print the plan]
-    I -- yes --> J[Rename remote file to backup]
-    J --> K[Upload new file]
-    K --> L[Download again and compare hashes]
-    L -- mismatch --> E5[upload_verification_failed]
-    L -- match --> M[Record hash and history entry]
-    M --> S([success])
+    A(["deploy local to remote"]) --> B{"Local file exists?"}
+    B -- "no" --> E1["error"]
+    B -- "yes" --> C{"Remote path in whitelist?"}
+    C -- "no" --> E2["blocked"]
+    C -- "yes" --> D["Connect over FTPS, hash the remote file"]
+    D --> F{"Remote already equals local?"}
+    F -- "yes" --> N1["no_change"]
+    F -- "no" --> G{"Differs from --expected-hash?"}
+    G -- "yes, and no --force" --> E3["stale_download"]
+    G -- "no" --> H{"Differs from last deploy?"}
+    H -- "yes, and no --force" --> E4["drift_detected"]
+    H -- "no" --> I{"--execute given?"}
+    I -- "no" --> N2["dry_run: print the plan"]
+    I -- "yes" --> J["Rename remote file to backup"]
+    J --> K["Upload new file"]
+    K --> L["Download again and compare hashes"]
+    L -- "mismatch" --> E5["upload_verification_failed"]
+    L -- "match" --> M["Record hash and history entry"]
+    M --> S(["success"])
 ```
 
 If verification fails, the old file is still on the server under the backup name.
@@ -208,6 +163,43 @@ If verification fails, the old file is still on the server under the backup name
 Backups are named `name_DDMMYY_HHMMSS_microseconds.ext`, for example `index_270726_143210_482391.php`. The microseconds keep names unique when a batch backs up many files in the same second.
 
 Downloads use the same model in reverse. A local file that already exists is renamed to a timestamped backup before the new copy is written.
+
+### An agent deploy, step by step
+
+The same flow when an agent drives it over MCP. The agent gets a plan first and only writes after you confirm.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor You
+    participant Agent as AI agent
+    participant MCP as MCP server
+    participant Core
+    participant FTP as FTP server
+    participant Store as Local store
+
+    You->>Agent: Deploy index.php
+    Agent->>MCP: deploy(local, remote, execute=false)
+    MCP->>Core: deploy_file(...)
+    Core->>Core: Check directory whitelist
+    Core->>FTP: Connect over FTPS, download remote file
+    Core->>Core: Hash it, compare with local
+    Core->>Store: Read last known hash
+    Core-->>MCP: status dry_run, the plan
+    MCP-->>Agent: summary_markdown
+    Agent->>You: Show the plan, ask to confirm
+    You->>Agent: Confirm
+
+    Agent->>MCP: deploy(local, remote, execute=true)
+    MCP->>Core: deploy_file(...)
+    Core->>FTP: Rename remote file to backup
+    Core->>FTP: Upload new file
+    Core->>FTP: Download again, compare hashes
+    Core->>Store: Save new hash and history entry
+    Core-->>MCP: status success
+    MCP-->>Agent: summary_markdown
+    Agent->>You: Report the result
+```
 
 ### Result statuses
 
@@ -355,26 +347,9 @@ An old `.masterpwd` file is migrated into `.ftpconfig` the next time you run `se
 
 The CLI and the MCP server are two front ends over one core. Both call the same functions, so the safety rules cannot differ between them.
 
-```mermaid
-flowchart LR
-    U([You]) --> CLI["CLI<br/>safe_ftp.py: argparse, cmd_*"]
-    A([AI agent]) --> MCP["MCP server<br/>safe_ftp_mcp.py: 8 tools"]
-    CLI --> CORE
-    MCP --> CORE
-    subgraph CORE ["Core (safe_ftp.py)"]
-        direction TB
-        OPS["deploy_file, download_file, check_status,<br/>list_remote_dir, batch_*"]
-        GUARD["Guards: whitelist, drift, dry-run,<br/>hash verification"]
-        OPS --- GUARD
-    end
-    CORE --> FTP["ftplib over FTPS<br/>verified TLS context"]
-    FTP --> SRV[(FTP server)]
-    CORE <--> STORE[("~/.safe_ftp_deploy<br/>sites.enc, state.json, history.json")]
-    CORE --> FMT["safe_ftp_format.py<br/>result dict to Markdown"]
-    FMT --> CLI
-    FMT --> MCP
-    INST["safe_ftp_install.py"] -. writes config .-> AGENTCFG["Agent config files<br/>and skill"]
-```
+<p align="center">
+  <img src="assets/architecture.svg" alt="Architecture diagram" width="860">
+</p>
 
 ### Modules
 
@@ -385,6 +360,7 @@ flowchart LR
 | `safe_ftp_format.py` | ~250 | Turns result dicts into Markdown. The CLI renders it with `rich`, MCP returns it as text |
 | `safe_ftp_install.py` | ~300 | `install` command. Merges MCP entries into agent configs and writes guidance |
 | `skill/safe-ftp-deploy/SKILL.md` | | The agent skill, copied into `.claude/skills` for Claude Code |
+| `Dockerfile` | | Container image for the CLI and the MCP server |
 | `tests/` | | 17 test modules. No real FTP server is needed |
 
 ### Design notes
@@ -410,6 +386,32 @@ No. It uses Python's `ftplib`, so FTP and FTPS only.
 
 **How do I undo a deploy?**
 Run `history --remote <path>` to find the backup name, then rename the backup back on the server in your FTP client. A rollback command does not exist yet.
+
+## Run with Docker
+
+The image has the CLI and the MCP server and needs no local Python. Build it once:
+
+```bash
+docker build -t safe-ftp-deploy https://github.com/vivekkushalch/safe_ftp.git
+```
+
+Credentials are encrypted into `/home/app/.safe_ftp_deploy`, so keep that folder in a named volume. Your project goes in `/work`.
+
+```bash
+docker run --rm -it -v safe-ftp-data:/home/app/.safe_ftp_deploy -v "$PWD":/work safe-ftp-deploy setup-site --name mysite
+```
+
+```bash
+docker run --rm -it -v safe-ftp-data:/home/app/.safe_ftp_deploy -v "$PWD":/work safe-ftp-deploy deploy --local ./index.php --remote /public_html/index.php
+```
+
+To use it as an MCP server, run the container over stdio:
+
+```json
+{"mcpServers": {"safe-ftp-deploy": {"command": "docker", "args": ["run", "--rm", "-i", "-v", "safe-ftp-data:/home/app/.safe_ftp_deploy", "-v", "${workspaceFolder}:/work", "safe-ftp-deploy", "mcp"]}}}
+```
+
+`${workspaceFolder}` works in VS Code based clients. In other clients, put the absolute path of your project there. The container reads and writes only what you mount.
 
 ## Development
 

@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 480" width="900" height="480" role="img" aria-label="Architecture: the CLI and the MCP server both call one core, which talks to the FTP server and the local store">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" class="arrowhead"/>
+    </marker>
+    <style>
+      text { font-family: 'Segoe UI', -apple-system, Helvetica, Arial, sans-serif; }
+      .bg { fill: #ffffff; }
+      .actor { fill: #eef2ff; stroke: #6366f1; stroke-width: 1.5; }
+      .front { fill: #eff6ff; stroke: #3b82f6; stroke-width: 1.5; }
+      .coreBox { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1.5; }
+      .card { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.2; }
+      .ext { fill: #f0fdf4; stroke: #22c55e; stroke-width: 1.5; }
+      .store { fill: #fffbeb; stroke: #f59e0b; stroke-width: 1.5; }
+      .title { fill: #0f172a; font-size: 15px; font-weight: 700; }
+      .sub { fill: #475569; font-size: 12px; }
+      .code { fill: #334155; font-size: 11.5px; font-family: ui-monospace, Consolas, Menlo, monospace; }
+      .label { fill: #64748b; font-size: 11px; }
+      .line { stroke: #64748b; stroke-width: 1.6; fill: none; }
+      .dash { stroke: #94a3b8; stroke-width: 1.4; fill: none; stroke-dasharray: 5 4; }
+      .arrowhead { fill: #64748b; }
+      @media (prefers-color-scheme: dark) {
+        .bg { fill: #0d1117; }
+        .actor { fill: #1e1b4b; stroke: #818cf8; }
+        .front { fill: #0f2a4a; stroke: #58a6ff; }
+        .coreBox { fill: #161b22; stroke: #484f58; }
+        .card { fill: #0d1117; stroke: #30363d; }
+        .ext { fill: #0b2e1a; stroke: #3fb950; }
+        .store { fill: #33260a; stroke: #d29922; }
+        .title { fill: #f0f6fc; }
+        .sub { fill: #8b949e; }
+        .code { fill: #c9d1d9; }
+        .label { fill: #8b949e; }
+        .line { stroke: #8b949e; }
+        .dash { stroke: #6e7681; }
+        .arrowhead { fill: #8b949e; }
+      }
+    </style>
+  </defs>
+
+  <rect class="bg" width="900" height="480" rx="10"/>
+
+  <!-- actors -->
+  <rect class="actor" x="130" y="18" width="200" height="42" rx="21"/>
+  <text class="title" x="230" y="44" text-anchor="middle">You</text>
+  <rect class="actor" x="570" y="18" width="200" height="42" rx="21"/>
+  <text class="title" x="670" y="44" text-anchor="middle">AI agent</text>
+
+  <line class="line" x1="230" y1="60" x2="230" y2="98" marker-end="url(#arrow)"/>
+  <line class="line" x1="670" y1="60" x2="670" y2="98" marker-end="url(#arrow)"/>
+
+  <!-- front ends -->
+  <rect class="front" x="100" y="100" width="260" height="66" rx="8"/>
+  <text class="title" x="230" y="126" text-anchor="middle">CLI</text>
+  <text class="code" x="230" y="146" text-anchor="middle">safe-ftp-deploy deploy ...</text>
+  <text class="label" x="230" y="160" text-anchor="middle">safe_ftp.py</text>
+
+  <rect class="front" x="540" y="100" width="260" height="66" rx="8"/>
+  <text class="title" x="670" y="126" text-anchor="middle">MCP server</text>
+  <text class="code" x="670" y="146" text-anchor="middle">safe-ftp-deploy mcp  (stdio, 8 tools)</text>
+  <text class="label" x="670" y="160" text-anchor="middle">safe_ftp_mcp.py</text>
+
+  <line class="line" x1="230" y1="166" x2="230" y2="204" marker-end="url(#arrow)"/>
+  <line class="line" x1="670" y1="166" x2="670" y2="204" marker-end="url(#arrow)"/>
+
+  <!-- core -->
+  <rect class="coreBox" x="40" y="206" width="820" height="134" rx="10"/>
+  <text class="title" x="60" y="230">Core</text>
+  <text class="sub" x="104" y="230">same code path for both front ends</text>
+
+  <rect class="card" x="60" y="244" width="250" height="84" rx="8"/>
+  <text class="title" x="76" y="266" style="font-size:13px">Operations</text>
+  <text class="code" x="76" y="286">deploy_file, download_file</text>
+  <text class="code" x="76" y="302">check_status, list_remote_dir</text>
+  <text class="code" x="76" y="318">batch_deploy, batch_download</text>
+
+  <rect class="card" x="325" y="244" width="250" height="84" rx="8"/>
+  <text class="title" x="341" y="266" style="font-size:13px">Guards</text>
+  <text class="sub" x="341" y="286">Directory whitelist</text>
+  <text class="sub" x="341" y="302">Drift check, dry-run default</text>
+  <text class="sub" x="341" y="318">Hash check after upload</text>
+
+  <rect class="card" x="590" y="244" width="250" height="84" rx="8"/>
+  <text class="title" x="606" y="266" style="font-size:13px">Formatter</text>
+  <text class="sub" x="606" y="286">Result dict to Markdown</text>
+  <text class="sub" x="606" y="302">Printed by the CLI, returned as</text>
+  <text class="sub" x="606" y="318">summary_markdown by MCP</text>
+
+  <line class="line" x1="230" y1="340" x2="230" y2="378" marker-end="url(#arrow)"/>
+  <line class="line" x1="670" y1="340" x2="670" y2="378" marker-end="url(#arrow)"/>
+  <text class="label" x="240" y="364">ftplib, FTPS</text>
+  <text class="label" x="680" y="364">read and write</text>
+
+  <!-- external -->
+  <rect class="ext" x="100" y="380" width="260" height="62" rx="8"/>
+  <text class="title" x="230" y="406" text-anchor="middle">FTP / FTPS server</text>
+  <text class="sub" x="230" y="426" text-anchor="middle">certificate and hostname verified</text>
+
+  <rect class="store" x="540" y="380" width="260" height="62" rx="8"/>
+  <text class="title" x="670" y="406" text-anchor="middle">~/.safe_ftp_deploy</text>
+  <text class="code" x="670" y="426" text-anchor="middle">sites.enc  state.json  history.json</text>
+
+  <!-- install note -->
+  <text class="label" x="450" y="468" text-anchor="middle">safe-ftp-deploy install (safe_ftp_install.py) writes the MCP entry and agent guidance into your agent's config files.</text>
+</svg>
