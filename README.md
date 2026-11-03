@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/logo.svg" alt="Safe FTP Deploy" width="420">
+<img src="assets/logo.svg" alt="Safe FTP MCP" width="420">
 
 **FTP deploys you can hand to an AI agent without losing sleep.**<br>
 Drift detection · no-delete guarantee · dry-run by default · MCP server included
