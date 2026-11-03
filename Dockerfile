@@ -12,5 +12,5 @@ RUN useradd --create-home --uid 1000 app
 USER app
 WORKDIR /work
 
-ENTRYPOINT ["safe-ftp-deploy"]
+ENTRYPOINT ["safe-ftp"]
 CMD ["--help"]

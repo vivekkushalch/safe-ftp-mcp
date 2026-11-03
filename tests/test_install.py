@@ -9,42 +9,42 @@ import safe_ftp_install as install
 
 def test_merge_creates_file_and_key_when_missing(tmp_path):
     path = str(tmp_path / "config.json")
-    action = install._merge_top_level_entry(path, "mcpServers", "safe-ftp-deploy", {"command": "x"})
+    action = install._merge_top_level_entry(path, "mcpServers", "safe-ftp", {"command": "x"})
 
     assert action == "created"
     data = json.loads((tmp_path / "config.json").read_text(encoding="utf-8"))
-    assert data == {"mcpServers": {"safe-ftp-deploy": {"command": "x"}}}
+    assert data == {"mcpServers": {"safe-ftp": {"command": "x"}}}
 
 
 def test_merge_preserves_other_existing_entries(tmp_path):
     path = tmp_path / "config.json"
     path.write_text(json.dumps({"mcpServers": {"other-server": {"command": "y"}}}), encoding="utf-8")
 
-    install._merge_top_level_entry(str(path), "mcpServers", "safe-ftp-deploy", {"command": "x"})
+    install._merge_top_level_entry(str(path), "mcpServers", "safe-ftp", {"command": "x"})
 
     data = json.loads(path.read_text(encoding="utf-8"))
     assert data["mcpServers"]["other-server"] == {"command": "y"}
-    assert data["mcpServers"]["safe-ftp-deploy"] == {"command": "x"}
+    assert data["mcpServers"]["safe-ftp"] == {"command": "x"}
 
 
 def test_merge_reports_unchanged_when_entry_already_matches(tmp_path):
     path = tmp_path / "config.json"
-    path.write_text(json.dumps({"mcpServers": {"safe-ftp-deploy": {"command": "x"}}}), encoding="utf-8")
+    path.write_text(json.dumps({"mcpServers": {"safe-ftp": {"command": "x"}}}), encoding="utf-8")
 
-    action = install._merge_top_level_entry(str(path), "mcpServers", "safe-ftp-deploy", {"command": "x"})
+    action = install._merge_top_level_entry(str(path), "mcpServers", "safe-ftp", {"command": "x"})
 
     assert action == "unchanged"
 
 
 def test_merge_reports_updated_when_entry_differs(tmp_path):
     path = tmp_path / "config.json"
-    path.write_text(json.dumps({"mcpServers": {"safe-ftp-deploy": {"command": "old"}}}), encoding="utf-8")
+    path.write_text(json.dumps({"mcpServers": {"safe-ftp": {"command": "old"}}}), encoding="utf-8")
 
-    action = install._merge_top_level_entry(str(path), "mcpServers", "safe-ftp-deploy", {"command": "new"})
+    action = install._merge_top_level_entry(str(path), "mcpServers", "safe-ftp", {"command": "new"})
 
     assert action == "updated"
     data = json.loads(path.read_text(encoding="utf-8"))
-    assert data["mcpServers"]["safe-ftp-deploy"] == {"command": "new"}
+    assert data["mcpServers"]["safe-ftp"] == {"command": "new"}
 
 
 def test_merge_refuses_invalid_json_without_overwriting(tmp_path):
@@ -52,7 +52,7 @@ def test_merge_refuses_invalid_json_without_overwriting(tmp_path):
     path.write_text("{ not valid json", encoding="utf-8")
 
     with pytest.raises(ValueError):
-        install._merge_top_level_entry(str(path), "mcpServers", "safe-ftp-deploy", {"command": "x"})
+        install._merge_top_level_entry(str(path), "mcpServers", "safe-ftp", {"command": "x"})
 
     # File must be untouched.
     assert path.read_text(encoding="utf-8") == "{ not valid json"
@@ -65,8 +65,8 @@ def test_install_claude_writes_mcp_json(tmp_path):
 
     assert result["status"] == "ok"
     data = json.loads((tmp_path / ".mcp.json").read_text(encoding="utf-8"))
-    assert data["mcpServers"]["safe-ftp-deploy"] == {
-        "type": "stdio", "command": "safe-ftp-deploy", "args": ["mcp"],
+    assert data["mcpServers"]["safe-ftp"] == {
+        "type": "stdio", "command": "safe-ftp", "args": ["mcp"],
     }
 
 
@@ -74,10 +74,10 @@ def test_install_claude_skill_writes_skill_md(tmp_path):
     result = install.install_claude_skill(cwd=str(tmp_path))
 
     assert result["status"] == "ok"
-    skill_path = tmp_path / ".claude" / "skills" / "safe-ftp-deploy" / "SKILL.md"
+    skill_path = tmp_path / ".claude" / "skills" / "safe-ftp" / "SKILL.md"
     assert skill_path.exists()
     content = skill_path.read_text(encoding="utf-8")
-    assert content.startswith("---\nname: safe-ftp-deploy")
+    assert content.startswith("---\nname: safe-ftp")
     assert "Dry run first, always" in content
 
 
@@ -88,8 +88,8 @@ def test_install_opencode_writes_opencode_json(tmp_path):
 
     assert result["status"] == "ok"
     data = json.loads((tmp_path / "opencode.json").read_text(encoding="utf-8"))
-    assert data["mcp"]["safe-ftp-deploy"] == {
-        "type": "local", "command": ["safe-ftp-deploy", "mcp"], "enabled": True,
+    assert data["mcp"]["safe-ftp"] == {
+        "type": "local", "command": ["safe-ftp", "mcp"], "enabled": True,
     }
 
 
@@ -100,7 +100,7 @@ def test_install_cursor_writes_correct_path_and_entry(tmp_path):
 
     assert result["status"] == "ok"
     data = json.loads((tmp_path / ".cursor" / "mcp.json").read_text(encoding="utf-8"))
-    assert data["mcpServers"]["safe-ftp-deploy"] == {"command": "safe-ftp-deploy", "args": ["mcp"]}
+    assert data["mcpServers"]["safe-ftp"] == {"command": "safe-ftp", "args": ["mcp"]}
 
 
 def test_install_windsurf_writes_correct_path_and_entry(tmp_path, monkeypatch):
@@ -111,7 +111,7 @@ def test_install_windsurf_writes_correct_path_and_entry(tmp_path, monkeypatch):
 
     assert result["status"] == "ok"
     data = json.loads((tmp_path / ".codeium" / "windsurf" / "mcp_config.json").read_text(encoding="utf-8"))
-    assert data["mcpServers"]["safe-ftp-deploy"] == {"command": "safe-ftp-deploy", "args": ["mcp"]}
+    assert data["mcpServers"]["safe-ftp"] == {"command": "safe-ftp", "args": ["mcp"]}
 
 
 def test_install_antigravity_writes_correct_path_and_entry(tmp_path):
@@ -119,7 +119,7 @@ def test_install_antigravity_writes_correct_path_and_entry(tmp_path):
 
     assert result["status"] == "ok"
     data = json.loads((tmp_path / ".agents" / "mcp_config.json").read_text(encoding="utf-8"))
-    assert data["mcpServers"]["safe-ftp-deploy"] == {"command": "safe-ftp-deploy", "args": ["mcp"]}
+    assert data["mcpServers"]["safe-ftp"] == {"command": "safe-ftp", "args": ["mcp"]}
 
 
 # --- install_agents_md ---
@@ -129,7 +129,7 @@ def test_install_agents_md_creates_new_file(tmp_path):
 
     assert result["status"] == "ok"
     content = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
-    assert "BEGIN safe-ftp-deploy agent guidance" in content
+    assert "BEGIN safe-ftp agent guidance" in content
     assert "execute=False" in content
 
 
@@ -140,7 +140,7 @@ def test_install_agents_md_appends_to_existing_content(tmp_path):
 
     content = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
     assert "Some existing notes." in content
-    assert "BEGIN safe-ftp-deploy agent guidance" in content
+    assert "BEGIN safe-ftp agent guidance" in content
 
 
 def test_install_agents_md_updates_existing_block_in_place_without_duplicating(tmp_path):
@@ -148,7 +148,7 @@ def test_install_agents_md_updates_existing_block_in_place_without_duplicating(t
     install.install_agents_md(cwd=str(tmp_path))
 
     content = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
-    assert content.count("BEGIN safe-ftp-deploy agent guidance") == 1
+    assert content.count("BEGIN safe-ftp agent guidance") == 1
 
 
 # --- install_agent dispatcher ---
@@ -176,6 +176,6 @@ def test_install_agent_unknown_target_raises_system_exit(tmp_path):
 def test_embedded_skill_matches_skill_file():
     import pathlib
 
-    skill_file = pathlib.Path(__file__).parent.parent / "skill" / "safe-ftp-deploy" / "SKILL.md"
+    skill_file = pathlib.Path(__file__).parent.parent / "skill" / "safe-ftp" / "SKILL.md"
     on_disk = skill_file.read_text(encoding="utf-8").replace("\r\n", "\n")
     assert on_disk == install.SKILL_MD_CONTENT

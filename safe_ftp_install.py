@@ -1,4 +1,4 @@
-"""Registers safe-ftp-deploy's MCP server (and agent guidance) for various
+"""Registers safe-ftp's MCP server (and agent guidance) for various
 AI coding agents: Claude Code, Cursor, Windsurf, OpenCode, Antigravity.
 
 Every config write is merge-only: read the existing JSON, set just our
@@ -6,26 +6,26 @@ entry, write the rest back untouched. A file that exists but isn't valid
 JSON is left alone -- we refuse rather than risk clobbering it.
 
 The skill/AGENTS.md guidance text is embedded here as a constant rather
-than read from skill/safe-ftp-deploy/SKILL.md at runtime, because that
+than read from skill/safe-ftp/SKILL.md at runtime, because that
 file is not currently packaged as installed package data (pyproject.toml
 only lists .py modules) -- reading it from disk would break for anyone
 who installed via `uv tool install` rather than a git checkout. Keep this
-constant in sync with skill/safe-ftp-deploy/SKILL.md by hand; it's short
+constant in sync with skill/safe-ftp/SKILL.md by hand; it's short
 and changes rarely.
 """
 
 import json
 import os
 
-_MCP_ENTRY_STDIO = {"command": "safe-ftp-deploy", "args": ["mcp"]}
+_MCP_ENTRY_STDIO = {"command": "safe-ftp", "args": ["mcp"]}
 
 SKILL_MD_CONTENT = """\
 ---
-name: safe-ftp-deploy
-description: Use when deploying, downloading, or checking files on FTP/FTPS shared hosting (e.g. Hostinger) via the safe-ftp-deploy tool. Trigger on requests to deploy/upload/publish a file or folder to an FTP site, download files from one, check drift/deploy status, list a remote directory, or provision a new FTP site profile.
+name: safe-ftp
+description: Use when deploying, downloading, or checking files on FTP/FTPS shared hosting (e.g. Hostinger) via the safe-ftp tool. Trigger on requests to deploy/upload/publish a file or folder to an FTP site, download files from one, check drift/deploy status, list a remote directory, or provision a new FTP site profile.
 ---
 
-# safe-ftp-deploy
+# safe-ftp
 
 A safety-first FTP/FTPS deploy tool, built specifically to be handed to an
 AI agent. It enforces its own safety rules regardless of what you ask it to
@@ -42,7 +42,7 @@ not to work around the guardrails.
 
 ## How to reach it
 
-**Preferred: MCP tools**, if `safe-ftp-deploy mcp` is configured as an MCP
+**Preferred: MCP tools**, if `safe-ftp mcp` is configured as an MCP
 server in this session. Eight tools, all returning a `summary_markdown`
 field — relay that directly to the user instead of composing your own
 summary from the raw fields:
@@ -68,7 +68,7 @@ message when there's nothing meaningful to say; an empty one is fine.
 `--json` so you get structured output instead of having to scrape text:
 
 ```bash
-safe-ftp-deploy deploy --local ./index.php --remote /public_html/index.php --json
+safe-ftp deploy --local ./index.php --remote /public_html/index.php --json
 ```
 
 Either way, `--name`/`name` (which site) is usually omittable — it defaults
@@ -105,7 +105,7 @@ project's default.
    whitelist, that's a deliberate restriction set by the human who ran
    `setup_site` — ask them, don't work around it.
 6. **Don't collect FTP passwords in chat.** If no site is configured,
-   tell the user to run `safe-ftp-deploy setup-site --name <site>` in
+   tell the user to run `safe-ftp setup-site --name <site>` in
    their own terminal, or to point it at a FileZilla export with
    `--from-filezilla`. Use the `setup_site` tool only when the user has
    deliberately given you every value, and never invent placeholders.
@@ -154,15 +154,15 @@ in their FTP client.
 - Asking the user to paste FTP or master passwords into the chat.
 """
 
-_AGENTS_MD_BEGIN = "<!-- BEGIN safe-ftp-deploy agent guidance (managed by `safe-ftp-deploy install`) -->"
-_AGENTS_MD_END = "<!-- END safe-ftp-deploy agent guidance -->"
+_AGENTS_MD_BEGIN = "<!-- BEGIN safe-ftp agent guidance (managed by `safe-ftp install`) -->"
+_AGENTS_MD_END = "<!-- END safe-ftp agent guidance -->"
 
 _AGENTS_MD_BODY = """\
-## safe-ftp-deploy
+## safe-ftp
 
 A safety-first FTP/FTPS deploy tool available as MCP tools (`deploy`,
 `batch_deploy`, `download`, `batch_download`, `status`, `history`,
-`list_remote`, `setup_site`) or as the `safe-ftp-deploy` CLI with `--json`.
+`list_remote`, `setup_site`) or as the `safe-ftp` CLI with `--json`.
 `deploy`/`batch_deploy` take an optional `message` recorded in `history` on
 a successful execute -- pass a short note on why when you have one. It enforces
 its own safety rules regardless of what you ask it to do: no delete
@@ -181,7 +181,7 @@ Required workflow:
 5. Never invent `allowed_dirs` entries to work around a `blocked` result --
    that whitelist is a deliberate restriction, ask the user instead.
 6. Don't collect FTP passwords in chat. If no site is configured, tell the
-   user to run `safe-ftp-deploy setup-site --name <site>` in their terminal.
+   user to run `safe-ftp setup-site --name <site>` in their terminal.
 7. Never turn off TLS verification. `--insecure-tls` is the user's decision
    at setup and is not exposed through MCP.
 8. To edit a file on the server: `download` it, edit it, then `deploy` with
@@ -235,7 +235,7 @@ def install_claude(cwd: str = None) -> dict:
     path = os.path.join(cwd, ".mcp.json")
     entry = {"type": "stdio", **_MCP_ENTRY_STDIO}
     try:
-        action = _merge_top_level_entry(path, "mcpServers", "safe-ftp-deploy", entry)
+        action = _merge_top_level_entry(path, "mcpServers", "safe-ftp", entry)
     except ValueError as e:
         return {"status": "error", "path": path, "message": str(e)}
     return {"status": "ok", "path": path, "action": action, "message": f"MCP server entry {action} in {path}"}
@@ -243,7 +243,7 @@ def install_claude(cwd: str = None) -> dict:
 
 def install_claude_skill(cwd: str = None) -> dict:
     cwd = cwd or os.getcwd()
-    skill_dir = os.path.join(cwd, ".claude", "skills", "safe-ftp-deploy")
+    skill_dir = os.path.join(cwd, ".claude", "skills", "safe-ftp")
     os.makedirs(skill_dir, exist_ok=True)
     path = os.path.join(skill_dir, "SKILL.md")
     with open(path, "w", encoding="utf-8") as f:
@@ -255,7 +255,7 @@ def install_cursor(cwd: str = None) -> dict:
     cwd = cwd or os.getcwd()
     path = os.path.join(cwd, ".cursor", "mcp.json")
     try:
-        action = _merge_top_level_entry(path, "mcpServers", "safe-ftp-deploy", dict(_MCP_ENTRY_STDIO))
+        action = _merge_top_level_entry(path, "mcpServers", "safe-ftp", dict(_MCP_ENTRY_STDIO))
     except ValueError as e:
         return {"status": "error", "path": path, "message": str(e)}
     return {"status": "ok", "path": path, "action": action, "message": f"MCP server entry {action} in {path}"}
@@ -266,7 +266,7 @@ def install_windsurf() -> dict:
     override exists, unlike the other agents here."""
     path = os.path.join(os.path.expanduser("~"), ".codeium", "windsurf", "mcp_config.json")
     try:
-        action = _merge_top_level_entry(path, "mcpServers", "safe-ftp-deploy", dict(_MCP_ENTRY_STDIO))
+        action = _merge_top_level_entry(path, "mcpServers", "safe-ftp", dict(_MCP_ENTRY_STDIO))
     except ValueError as e:
         return {"status": "error", "path": path, "message": str(e)}
     return {"status": "ok", "path": path, "action": action, "message": f"MCP server entry {action} in {path}"}
@@ -276,7 +276,7 @@ def install_antigravity(cwd: str = None) -> dict:
     cwd = cwd or os.getcwd()
     path = os.path.join(cwd, ".agents", "mcp_config.json")
     try:
-        action = _merge_top_level_entry(path, "mcpServers", "safe-ftp-deploy", dict(_MCP_ENTRY_STDIO))
+        action = _merge_top_level_entry(path, "mcpServers", "safe-ftp", dict(_MCP_ENTRY_STDIO))
     except ValueError as e:
         return {"status": "error", "path": path, "message": str(e)}
     return {"status": "ok", "path": path, "action": action, "message": f"MCP server entry {action} in {path}"}
@@ -285,9 +285,9 @@ def install_antigravity(cwd: str = None) -> dict:
 def install_opencode(cwd: str = None) -> dict:
     cwd = cwd or os.getcwd()
     path = os.path.join(cwd, "opencode.json")
-    entry = {"type": "local", "command": ["safe-ftp-deploy", "mcp"], "enabled": True}
+    entry = {"type": "local", "command": ["safe-ftp", "mcp"], "enabled": True}
     try:
-        action = _merge_top_level_entry(path, "mcp", "safe-ftp-deploy", entry)
+        action = _merge_top_level_entry(path, "mcp", "safe-ftp", entry)
     except ValueError as e:
         return {"status": "error", "path": path, "message": str(e)}
     return {"status": "ok", "path": path, "action": action, "message": f"MCP server entry {action} in {path}"}

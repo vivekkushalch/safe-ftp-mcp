@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-safe_ftp_deploy.py
-==================
+safe-ftp
+========
 
 A safety-first deployment tool for Hostinger-style shared FTP hosting.
 
@@ -37,22 +37,22 @@ USAGE
 -----
   # One-time setup per site (prompts for host/user/password interactively,
   # nothing is ever typed on the command line where it could end up in shell history)
-  python3 safe_ftp_deploy.py setup-site --name mysite
+  safe-ftp setup-site --name mysite
 
   # See what WOULD happen (default, no changes made)
-  python3 safe_ftp_deploy.py deploy --name mysite --local ./index.php --remote /public_html/index.php
+  safe-ftp deploy --name mysite --local ./index.php --remote /public_html/index.php
 
   # Actually perform the backup-rename + upload
-  python3 safe_ftp_deploy.py deploy --name mysite --local ./index.php --remote /public_html/index.php --execute
+  safe-ftp deploy --name mysite --local ./index.php --remote /public_html/index.php --execute
 
   # Deploy a whole folder the same way
-  python3 safe_ftp_deploy.py batch-deploy --name mysite --local-dir ./site --remote-dir /public_html --execute
+  safe-ftp batch-deploy --name mysite --local-dir ./site --remote-dir /public_html --execute
 
   # Check status / drift for a file without deploying anything
-  python3 safe_ftp_deploy.py status --name mysite --remote /public_html/index.php
+  safe-ftp status --name mysite --remote /public_html/index.php
 
   # Machine-readable output for an agent
-  python3 safe_ftp_deploy.py deploy --name mysite --local ./index.php --remote /public_html/index.php --json
+  safe-ftp deploy --name mysite --local ./index.php --remote /public_html/index.php --json
 """
 
 import argparse
@@ -218,7 +218,7 @@ def _parse_filezilla_export(path: str) -> dict:
             protocol = None
         if protocol == _FILEZILLA_SFTP_PROTOCOL:
             raise SystemExit(
-                f"FileZilla export '{path}' uses SFTP, which safe-ftp-deploy "
+                f"FileZilla export '{path}' uses SFTP, which safe-ftp "
                 "doesn't support (FTP/FTPS only via ftplib)."
             )
         if protocol in _FILEZILLA_TLS_PROTOCOLS:
@@ -1337,10 +1337,10 @@ _JSON_HELP = "Print machine-readable JSON instead of a formatted summary."
 
 _WORKFLOW_EPILOG = """\
 Typical flow:
-  1. One-time per site:      safe-ftp-deploy setup-site --name mysite
-  2. See what would happen:  safe-ftp-deploy deploy --local ./index.php --remote /public_html/index.php
+  1. One-time per site:      safe-ftp setup-site --name mysite
+  2. See what would happen:  safe-ftp deploy --local ./index.php --remote /public_html/index.php
   3. Review the dry-run output above, then actually deploy:
-                              safe-ftp-deploy deploy --local ./index.php --remote /public_html/index.php --execute
+                              safe-ftp deploy --local ./index.php --remote /public_html/index.php --execute
 
 Every command is a dry run unless you pass --execute. Nothing is ever deleted --
 the only "destructive" action is renaming the old file to a timestamped backup.

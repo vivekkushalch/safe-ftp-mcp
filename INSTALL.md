@@ -1,10 +1,10 @@
-# Install and use safe-ftp-deploy (instructions for AI agents)
+# Install and use safe-ftp (instructions for AI agents)
 
-You are an AI coding agent. A user asked you to install safe-ftp-deploy by reading this file. Follow it top to bottom. Do not skip the rules in section 5.
+You are an AI coding agent. A user asked you to install safe-ftp by reading this file. Follow it top to bottom. Do not skip the rules in section 5.
 
 ## 1. What this tool is
 
-`safe-ftp-deploy` deploys and downloads files over FTP or FTPS with guardrails that you cannot turn off:
+`safe-ftp` deploys and downloads files over FTP or FTPS with guardrails that you cannot turn off:
 
 - It never deletes anything. Replacing a file renames the old one to a timestamped backup.
 - It refuses to overwrite a remote file that changed since the tool last touched it (drift detection).
@@ -18,7 +18,7 @@ It supports FTP and FTPS only. It does not support SFTP.
 
 Check what exists before installing.
 
-1. Run `safe-ftp-deploy --version`. If it prints a version, skip to step 3.
+1. Run `safe-ftp --version`. If it prints a version, skip to step 3.
 2. Check for uv with `uv --version`. If missing, tell the user to install it from https://docs.astral.sh/uv/getting-started/installation/ and wait. Do not pipe a remote script into a shell on your own.
 3. Install the tool:
 
@@ -26,7 +26,7 @@ Check what exists before installing.
 uv tool install git+https://github.com/vivekkushalch/safe-ftp-mcp.git
 ```
 
-4. Run `safe-ftp-deploy --version` again to confirm. If the command is not found, run `uv tool update-shell`, then tell the user to open a new terminal.
+4. Run `safe-ftp --version` again to confirm. If the command is not found, run `uv tool update-shell`, then tell the user to open a new terminal.
 
 No Python on the machine? Use the Docker route in section 8 instead.
 
@@ -36,21 +36,21 @@ Work out which agent you are, then run the matching command from the user's proj
 
 | You are | Command | MCP config it writes | Guidance it writes |
 |---|---|---|---|
-| Claude Code | `safe-ftp-deploy install claude` | `.mcp.json` | `.claude/skills/safe-ftp-deploy/SKILL.md` |
-| Cursor | `safe-ftp-deploy install cursor` | `.cursor/mcp.json` | `AGENTS.md` |
-| Windsurf | `safe-ftp-deploy install windsurf` | `~/.codeium/windsurf/mcp_config.json` (global) | `AGENTS.md` |
-| OpenCode | `safe-ftp-deploy install opencode` | `opencode.json` | `AGENTS.md` |
-| Antigravity | `safe-ftp-deploy install antigravity` | `.agents/mcp_config.json` | `AGENTS.md` |
+| Claude Code | `safe-ftp install claude` | `.mcp.json` | `.claude/skills/safe-ftp/SKILL.md` |
+| Cursor | `safe-ftp install cursor` | `.cursor/mcp.json` | `AGENTS.md` |
+| Windsurf | `safe-ftp install windsurf` | `~/.codeium/windsurf/mcp_config.json` (global) | `AGENTS.md` |
+| OpenCode | `safe-ftp install opencode` | `opencode.json` | `AGENTS.md` |
+| Antigravity | `safe-ftp install antigravity` | `.agents/mcp_config.json` | `AGENTS.md` |
 
 Do not run `install all` unless the user asks. It writes config for every agent, including Windsurf's global file.
 
 **Any other agent or MCP client.** Add this server entry to its MCP config by hand. The server speaks MCP over stdio.
 
 ```json
-{"mcpServers": {"safe-ftp-deploy": {"command": "safe-ftp-deploy", "args": ["mcp"]}}}
+{"mcpServers": {"safe-ftp": {"command": "safe-ftp", "args": ["mcp"]}}}
 ```
 
-If your client uses a different config shape, the launch command is `safe-ftp-deploy mcp`. Put the contents of section 5 and 6 into whatever instruction file your client reads (for example `AGENTS.md`, `CLAUDE.md`, or a rules file).
+If your client uses a different config shape, the launch command is `safe-ftp mcp`. Put the contents of section 5 and 6 into whatever instruction file your client reads (for example `AGENTS.md`, `CLAUDE.md`, or a rules file).
 
 After installing, tell the user to restart you or reload MCP servers. MCP tools do not appear in a session that was already running.
 
@@ -59,12 +59,12 @@ After installing, tell the user to restart you or reload MCP servers. MCP tools 
 The site profile holds the FTP host, username and password, encrypted with a master password. Ask the user to run this in their own terminal:
 
 ```bash
-safe-ftp-deploy setup-site --name <site-name>
+safe-ftp setup-site --name <site-name>
 ```
 
 It asks for a master password, FTP host, port, username, password, and the remote directories the tool may touch (for example `/public_html/`). It writes `.ftpconfig` in the project folder, so later commands do not need `--name`.
 
-Do not ask the user to paste FTP or master passwords into the chat. Do not read `.ftpconfig` or `~/.safe_ftp_deploy/`. If the user already has the site in FileZilla, they can run `safe-ftp-deploy setup-site --name <site-name> --from-filezilla ./export.xml` instead.
+Do not ask the user to paste FTP or master passwords into the chat. Do not read `.ftpconfig` or `~/.safe_ftp_deploy/`. If the user already has the site in FileZilla, they can run `safe-ftp setup-site --name <site-name> --from-filezilla ./export.xml` instead.
 
 Tell the user to set the directory whitelist. An empty whitelist allows the whole site.
 
@@ -100,13 +100,13 @@ Tell the user to set the directory whitelist. An empty whitelist allows the whol
 Add `--json` so you get structured output instead of text to scrape.
 
 ```bash
-safe-ftp-deploy deploy --local ./index.php --remote /public_html/index.php --json
-safe-ftp-deploy deploy --local ./index.php --remote /public_html/index.php --execute --json -m "reason"
-safe-ftp-deploy batch-deploy --local-dir ./site --remote-dir /public_html --exclude "vendor/*,*.log" --json
-safe-ftp-deploy download --remote /public_html/config.php --local ./config.php --json
-safe-ftp-deploy status --remote /public_html/index.php --json
-safe-ftp-deploy history --remote /public_html/index.php --json
-safe-ftp-deploy list --remote-dir /public_html --recursive --json
+safe-ftp deploy --local ./index.php --remote /public_html/index.php --json
+safe-ftp deploy --local ./index.php --remote /public_html/index.php --execute --json -m "reason"
+safe-ftp batch-deploy --local-dir ./site --remote-dir /public_html --exclude "vendor/*,*.log" --json
+safe-ftp download --remote /public_html/config.php --local ./config.php --json
+safe-ftp status --remote /public_html/index.php --json
+safe-ftp history --remote /public_html/index.php --json
+safe-ftp list --remote-dir /public_html --recursive --json
 ```
 
 Run commands from the project folder so the tool finds `.ftpconfig`.
@@ -141,21 +141,21 @@ To undo a deploy, `history` shows the backup name. Restoring means renaming the 
 If the user has Docker and no Python, build the image and run the MCP server over stdio. Credentials live in a named volume.
 
 ```bash
-docker build -t safe-ftp-deploy https://github.com/vivekkushalch/safe-ftp-mcp.git
-docker run --rm -it -v safe-ftp-data:/home/app/.safe_ftp_deploy -v "$PWD":/work safe-ftp-deploy setup-site --name <site-name>
+docker build -t safe-ftp https://github.com/vivekkushalch/safe-ftp-mcp.git
+docker run --rm -it -v safe-ftp-data:/home/app/.safe_ftp_deploy -v "$PWD":/work safe-ftp setup-site --name <site-name>
 ```
 
 MCP entry for the container:
 
 ```json
-{"mcpServers": {"safe-ftp-deploy": {"command": "docker", "args": ["run", "--rm", "-i", "-v", "safe-ftp-data:/home/app/.safe_ftp_deploy", "-v", "/absolute/path/to/project:/work", "safe-ftp-deploy", "mcp"]}}}
+{"mcpServers": {"safe-ftp": {"command": "docker", "args": ["run", "--rm", "-i", "-v", "safe-ftp-data:/home/app/.safe_ftp_deploy", "-v", "/absolute/path/to/project:/work", "safe-ftp", "mcp"]}}}
 ```
 
 ## 9. Troubleshooting
 
 | Problem | Fix |
 |---|---|
-| `safe-ftp-deploy: command not found` | Run `uv tool update-shell`, open a new terminal |
+| `safe-ftp: command not found` | Run `uv tool update-shell`, open a new terminal |
 | MCP tools are missing | Restart the agent or reload MCP servers. Check the config file from section 3 contains the entry |
 | `Could not connect: TLS certificate verification failed` | The host uses a self-signed or mismatched certificate. The user decides whether to re-run `setup-site --insecure-tls` |
 | `blocked` on a path you expect to work | The path is not under a whitelisted directory. Ask the user to run `setup-site` again with the right `--allowed-dirs` |
@@ -164,15 +164,15 @@ MCP entry for the container:
 ## 10. Uninstall
 
 ```bash
-uv tool uninstall safe-ftp-deploy
+uv tool uninstall safe-ftp
 ```
 
-Then remove the `safe-ftp-deploy` entry from the agent config files listed in section 3, and delete `~/.safe_ftp_deploy/` if the user wants the saved logins gone.
+Then remove the `safe-ftp` entry from the agent config files listed in section 3, and delete `~/.safe_ftp_deploy/` if the user wants the saved logins gone.
 
 ## 11. When you are done installing
 
 Tell the user, in a few lines:
 
 1. What you installed and which config files you changed.
-2. That they need to restart the agent, and run `safe-ftp-deploy setup-site --name <site-name>` themselves.
+2. That they need to restart the agent, and run `safe-ftp setup-site --name <site-name>` themselves.
 3. That every deploy will start as a dry run and you will ask before executing.

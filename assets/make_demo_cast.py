@@ -69,7 +69,7 @@ def by_hand(cmd_lines):
             typed(cl)
 
 
-CMD = "safe-ftp-deploy deploy --local ./index.php --remote /public_html/index.php"
+CMD = "safe-ftp deploy --local ./index.php --remote /public_html/index.php"
 
 # 1 of 5: ask the agent, dry run
 header(1, "Ask your agent to deploy. It dry-runs first.")
@@ -103,7 +103,7 @@ agent([
     "Last known hash " + c(G, "a41f9c0e") + ", now " + c(R, "7be20d15") + ".",
     c("1;" + W, "Review it first, or force the overwrite?"),
 ])
-by_hand(["safe-ftp-deploy status --remote /public_html/index.php"])
+by_hand(["safe-ftp status --remote /public_html/index.php"])
 clear(3.0)
 
 # 4 of 5: whitelist
@@ -114,7 +114,7 @@ agent([
     c("1;" + R, "Blocked.") + " /private/config.php is outside this site's allowed directories.",
     "I won't work around that. Ask whoever ran setup-site to allow it.",
 ])
-by_hand(['safe-ftp-deploy setup-site --name mysite --allowed-dirs "/public_html/,/private/"'])
+by_hand(['safe-ftp setup-site --name mysite --allowed-dirs "/public_html/,/private/"'])
 clear(3.0)
 
 # 5 of 5: history and undo
@@ -126,7 +126,7 @@ agent([
     "There is no rollback command. Rename that backup back to index.php in your",
     "FTP client.",
 ])
-by_hand(["safe-ftp-deploy history --remote /public_html/index.php"])
+by_hand(["safe-ftp history --remote /public_html/index.php"])
 out("", 4.5)
 
 header_json = {"version": 2, "width": 100, "height": 14, "timestamp": 1793000000,

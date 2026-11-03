@@ -205,7 +205,7 @@ def _build_mcp_server():
     usage are otherwise unchanged from the older FastMCP API."""
     from mcp.server.mcpserver import MCPServer
 
-    mcp_server = MCPServer("safe-ftp-deploy")
+    mcp_server = MCPServer("safe-ftp")
 
     @mcp_server.tool()
     def deploy(local: str, remote: str, name: str = None, execute: bool = False,

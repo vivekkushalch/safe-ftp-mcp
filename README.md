@@ -10,7 +10,7 @@ It never deletes, it refuses to overwrite files that changed behind its back, an
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
 <a href="#use-with-an-ai-agent"><img src="https://img.shields.io/badge/MCP-server-8A2BE2?style=for-the-badge" alt="MCP server"></a>
-<a href="#usage"><img src="https://img.shields.io/badge/CLI-safe--ftp--deploy-2563EB?style=for-the-badge" alt="CLI"></a>
+<a href="#usage"><img src="https://img.shields.io/badge/CLI-safe--ftp-2563EB?style=for-the-badge" alt="CLI"></a>
 <a href="#connect-an-agent"><img src="https://img.shields.io/badge/AI%20agent-skill-F97316?style=for-the-badge" alt="AI agent skill"></a>
 
 <sub>One tool, three ways in: an MCP server for agents, a CLI for you, and a skill that teaches agents the rules.</sub>
@@ -35,35 +35,35 @@ It never deletes, it refuses to overwrite files that changed behind its back, an
 Paste this line into any AI coding agent (Claude Code, Cursor, Windsurf, OpenCode, Antigravity, or anything that can fetch a URL and run commands):
 
 ```text
-Install safe-ftp-deploy by following https://raw.githubusercontent.com/vivekkushalch/safe-ftp-mcp/main/INSTALL.md
+Install safe-ftp by following https://raw.githubusercontent.com/vivekkushalch/safe-ftp-mcp/main/INSTALL.md
 ```
 
-The agent reads [INSTALL.md](INSTALL.md), installs the tool, registers the MCP server for itself, and learns the rules, the 8 MCP tools, the CLI and how to read results. It also installs the bundled [`safe-ftp-deploy` skill](skill/safe-ftp-deploy/SKILL.md), which teaches the dry-run-first workflow. Claude Code gets it as a skill file. Cursor, Windsurf, OpenCode and Antigravity get the same guidance in `AGENTS.md`. The agent then asks you to run `safe-ftp-deploy setup-site` yourself, so your FTP password never goes through the chat.
+The agent reads [INSTALL.md](INSTALL.md), installs the tool, registers the MCP server for itself, and learns the rules, the 8 MCP tools, the CLI and how to read results. It also installs the bundled [`safe-ftp` skill](skill/safe-ftp/SKILL.md), which teaches the dry-run-first workflow. Claude Code gets it as a skill file. Cursor, Windsurf, OpenCode and Antigravity get the same guidance in `AGENTS.md`. The agent then asks you to run `safe-ftp setup-site` yourself, so your FTP password never goes through the chat.
 
 **Without an agent.** Install it yourself. This needs [uv](https://docs.astral.sh/uv/getting-started/installation/).
 
 ```bash
 uv tool install git+https://github.com/vivekkushalch/safe-ftp-mcp.git
-safe-ftp-deploy setup-site --name mysite
+safe-ftp setup-site --name mysite
 ```
 
-Then connect an agent with `safe-ftp-deploy install <claude|cursor|windsurf|opencode|antigravity>`. That adds the MCP server and the skill (or `AGENTS.md` guidance). For any other MCP client, add this entry yourself:
+Then connect an agent with `safe-ftp install <claude|cursor|windsurf|opencode|antigravity>`. That adds the MCP server and the skill (or `AGENTS.md` guidance). For any other MCP client, add this entry yourself:
 
 ```json
-{"mcpServers": {"safe-ftp-deploy": {"command": "safe-ftp-deploy", "args": ["mcp"]}}}
+{"mcpServers": {"safe-ftp": {"command": "safe-ftp", "args": ["mcp"]}}}
 ```
 
 No Python? See [Run with Docker](#run-with-docker).
 
 ## Overview
 
-Safe FTP Deploy replaces the manual FileZilla routine of renaming the old file and uploading the new one. Each deploy renames the live file to a timestamped backup, uploads the new file, then downloads it again and compares hashes. The tool has no delete code path, so a bad deploy leaves the old file on the server under the backup name.
+Safe FTP replaces the manual FileZilla routine of renaming the old file and uploading the new one. Each deploy renames the live file to a timestamped backup, uploads the new file, then downloads it again and compares hashes. The tool has no delete code path, so a bad deploy leaves the old file on the server under the backup name.
 
 It also ships an MCP server and an agent skill. An agent that deploys through it follows the same rules you do: dry-run first, drift checks, and a directory whitelist the agent cannot change.
 
 What you get:
 
-- A CLI (`safe-ftp-deploy`) for single files and whole folders, in both directions.
+- A CLI (`safe-ftp`) for single files and whole folders, in both directions.
 - Drift detection. The tool records each file's hash after a deploy and refuses to overwrite a file whose hash has since changed.
 - Dry-run by default on every write command, in the CLI and in the MCP tools.
 - Credentials encrypted on disk with a master password.
@@ -76,11 +76,11 @@ Plain FTP and FTPS only. SFTP is not supported.
 After [installing](#install) and running `setup-site`, deploy a file. Without `--execute` you get a plan and nothing changes.
 
 ```bash
-safe-ftp-deploy deploy --local ./index.php --remote /public_html/index.php
-safe-ftp-deploy deploy --local ./index.php --remote /public_html/index.php --execute
+safe-ftp deploy --local ./index.php --remote /public_html/index.php
+safe-ftp deploy --local ./index.php --remote /public_html/index.php --execute
 ```
 
-`setup-site` asks for a master password, the FTP host, port, username and password, and the remote directories the tool may touch. Update the tool later with `uv tool upgrade safe-ftp-deploy`.
+`setup-site` asks for a master password, the FTP host, port, username and password, and the remote directories the tool may touch. Update the tool later with `uv tool upgrade safe-ftp`.
 
 ## Use with an AI agent
 
@@ -92,11 +92,11 @@ After the tool is installed, run one command per agent inside the project folder
 
 | Agent | Command | MCP config written | Guidance written |
 |---|---|---|---|
-| Claude Code | `safe-ftp-deploy install claude` | `.mcp.json` | `.claude/skills/safe-ftp-deploy/SKILL.md` |
-| Cursor | `safe-ftp-deploy install cursor` | `.cursor/mcp.json` | `AGENTS.md` |
-| Windsurf | `safe-ftp-deploy install windsurf` | `~/.codeium/windsurf/mcp_config.json` (global) | `AGENTS.md` |
-| OpenCode | `safe-ftp-deploy install opencode` | `opencode.json` | `AGENTS.md` |
-| Antigravity | `safe-ftp-deploy install antigravity` | `.agents/mcp_config.json` | `AGENTS.md` |
+| Claude Code | `safe-ftp install claude` | `.mcp.json` | `.claude/skills/safe-ftp/SKILL.md` |
+| Cursor | `safe-ftp install cursor` | `.cursor/mcp.json` | `AGENTS.md` |
+| Windsurf | `safe-ftp install windsurf` | `~/.codeium/windsurf/mcp_config.json` (global) | `AGENTS.md` |
+| OpenCode | `safe-ftp install opencode` | `opencode.json` | `AGENTS.md` |
+| Antigravity | `safe-ftp install antigravity` | `.agents/mcp_config.json` | `AGENTS.md` |
 
 Existing config entries are kept. Restart your agent or reload its MCP servers afterward.
 
@@ -222,13 +222,13 @@ sequenceDiagram
 | `mcp` | Start the MCP server on stdio |
 | `install` | Add the MCP server and guidance to an agent |
 
-Run `safe-ftp-deploy <command> --help` for every flag.
+Run `safe-ftp <command> --help` for every flag.
 
 ### Deploy
 
 ```bash
-safe-ftp-deploy deploy --local ./index.php --remote /public_html/index.php --execute -m "fix checkout redirect"
-safe-ftp-deploy batch-deploy --local-dir ./site --remote-dir /public_html --execute
+safe-ftp deploy --local ./index.php --remote /public_html/index.php --execute -m "fix checkout redirect"
+safe-ftp batch-deploy --local-dir ./site --remote-dir /public_html --execute
 ```
 
 `-m` attaches a note that `history` shows later. `--force` skips the drift and stale checks. Use it only after you have looked at the server version.
@@ -238,7 +238,7 @@ safe-ftp-deploy batch-deploy --local-dir ./site --remote-dir /public_html --exec
 `--include` and `--exclude` take comma-separated glob patterns and work on `batch-deploy`, `batch-download` and `list`.
 
 ```bash
-safe-ftp-deploy batch-deploy \
+safe-ftp batch-deploy \
   --local-dir ./site --remote-dir /public_html \
   --include "*.php,*.css,*.js" \
   --exclude "vendor/*,*.log,cache/*" \
@@ -248,16 +248,16 @@ safe-ftp-deploy batch-deploy \
 ### Download
 
 ```bash
-safe-ftp-deploy download --remote /public_html/config.php --local ./config.php --execute
-safe-ftp-deploy batch-download --remote-dir /public_html --local-dir ./site_backup --execute
+safe-ftp download --remote /public_html/config.php --local ./config.php --execute
+safe-ftp batch-download --remote-dir /public_html --local-dir ./site_backup --execute
 ```
 
 ### Inspect
 
 ```bash
-safe-ftp-deploy status --remote /public_html/index.php
-safe-ftp-deploy history --remote /public_html/index.php --limit 5
-safe-ftp-deploy list --remote-dir /public_html --recursive --sort modified --reverse
+safe-ftp status --remote /public_html/index.php
+safe-ftp history --remote /public_html/index.php --limit 5
+safe-ftp list --remote-dir /public_html --recursive --sort modified --reverse
 ```
 
 ## Configuration
@@ -270,7 +270,7 @@ Interactive setup is shown in the [quick start](#quick-start). For scripts, pass
 export SAFE_FTP_FTP_PASSWORD="..."
 export SAFE_FTP_MASTER_PASSWORD="..."
 
-safe-ftp-deploy setup-site --name mysite --non-interactive \
+safe-ftp setup-site --name mysite --non-interactive \
   --host ftp.example.com --port 21 --username myuser \
   --use-tls --allowed-dirs "/public_html/,/public_html/blog/"
 ```
@@ -280,7 +280,7 @@ safe-ftp-deploy setup-site --name mysite --non-interactive \
 ### Import from FileZilla
 
 ```bash
-safe-ftp-deploy setup-site --name mysite --from-filezilla ./export.xml
+safe-ftp setup-site --name mysite --from-filezilla ./export.xml
 ```
 
 Use a Site Manager XML export that contains exactly one `<Server>`. It fills in host, port, username, password and TLS. You are still asked for the directory whitelist unless you pass `--allowed-dirs`. Exports protected by a FileZilla master password (`encoding="crypt"`) cannot be read. Re-export without one, or pass `--ftp-password`.
@@ -290,7 +290,7 @@ Use a Site Manager XML export that contains exactly one `<Server>`. It fills in 
 FTPS connections verify the server certificate and hostname. If your host uses a self-signed or mismatched certificate and you trust it, save the site with `--insecure-tls`.
 
 ```bash
-safe-ftp-deploy setup-site --name mysite --insecure-tls
+safe-ftp setup-site --name mysite --insecure-tls
 ```
 
 This leaves the connection open to interception, so use it only for hosts you trust.
@@ -330,7 +330,7 @@ The CLI and the MCP server are two front ends over one core. Both call the same 
 | `safe_ftp_mcp.py` | ~290 | MCP server. Thin `_*_impl` functions wrap the core and add `summary_markdown` |
 | `safe_ftp_format.py` | ~250 | Turns result dicts into Markdown. The CLI renders it with `rich`, MCP returns it as text |
 | `safe_ftp_install.py` | ~300 | `install` command. Merges MCP entries into agent configs and writes guidance |
-| `skill/safe-ftp-deploy/SKILL.md` | | The agent skill, copied into `.claude/skills` for Claude Code |
+| `skill/safe-ftp/SKILL.md` | | The agent skill, copied into `.claude/skills` for Claude Code |
 | `INSTALL.md` | | Setup and usage guide written for AI agents |
 | `Dockerfile` | | Container image for the CLI and the MCP server |
 | `tests/` | | 17 test modules. No real FTP server is needed |
@@ -364,23 +364,23 @@ Run `history --remote <path>` to find the backup name, then rename the backup ba
 The image has the CLI and the MCP server and needs no local Python. Build it once:
 
 ```bash
-docker build -t safe-ftp-deploy https://github.com/vivekkushalch/safe-ftp-mcp.git
+docker build -t safe-ftp https://github.com/vivekkushalch/safe-ftp-mcp.git
 ```
 
 Credentials are encrypted into `/home/app/.safe_ftp_deploy`, so keep that folder in a named volume. Your project goes in `/work`.
 
 ```bash
-docker run --rm -it -v safe-ftp-data:/home/app/.safe_ftp_deploy -v "$PWD":/work safe-ftp-deploy setup-site --name mysite
+docker run --rm -it -v safe-ftp-data:/home/app/.safe_ftp_deploy -v "$PWD":/work safe-ftp setup-site --name mysite
 ```
 
 ```bash
-docker run --rm -it -v safe-ftp-data:/home/app/.safe_ftp_deploy -v "$PWD":/work safe-ftp-deploy deploy --local ./index.php --remote /public_html/index.php
+docker run --rm -it -v safe-ftp-data:/home/app/.safe_ftp_deploy -v "$PWD":/work safe-ftp deploy --local ./index.php --remote /public_html/index.php
 ```
 
 To use it as an MCP server, run the container over stdio:
 
 ```json
-{"mcpServers": {"safe-ftp-deploy": {"command": "docker", "args": ["run", "--rm", "-i", "-v", "safe-ftp-data:/home/app/.safe_ftp_deploy", "-v", "${workspaceFolder}:/work", "safe-ftp-deploy", "mcp"]}}}
+{"mcpServers": {"safe-ftp": {"command": "docker", "args": ["run", "--rm", "-i", "-v", "safe-ftp-data:/home/app/.safe_ftp_deploy", "-v", "${workspaceFolder}:/work", "safe-ftp", "mcp"]}}}
 ```
 
 `${workspaceFolder}` works in VS Code based clients. In other clients, put the absolute path of your project there. The container reads and writes only what you mount.

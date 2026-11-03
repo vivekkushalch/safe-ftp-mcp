@@ -13,4 +13,4 @@ labels: bug
 **Environment**
 - OS:
 - Python version:
-- `safe-ftp-deploy` version:
+- `safe-ftp` version:

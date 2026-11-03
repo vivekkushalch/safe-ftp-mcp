@@ -1,5 +1,5 @@
 [project]
-name = "safe-ftp-deploy"
+name = "safe-ftp"
 version = "0.1.0"
 description = "Safety-first FTP deploy tool with drift detection and a no-delete guarantee, built to be safe to hand to an AI agent."
 readme = "README.md"
@@ -33,7 +33,7 @@ Issues = "https://github.com/vivekkushalch/safe-ftp-mcp/issues"
 Changelog = "https://github.com/vivekkushalch/safe-ftp-mcp/blob/main/CHANGELOG.md"
 
 [project.scripts]
-safe-ftp-deploy = "safe_ftp:main"
+safe-ftp = "safe_ftp:main"
 
 [build-system]
 requires = ["setuptools>=61.0"]

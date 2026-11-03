@@ -4,7 +4,7 @@ Thanks for helping out. Issues and pull requests are welcome.
 
 ## Ground rules
 
-Safe FTP Deploy has two promises. Every change must keep them:
+Safe FTP has two promises. Every change must keep them:
 
 1. **No delete path.** The tool never removes remote or local files; replacing a file means renaming it to a timestamped backup.
 2. **No write without `--execute`.** Dry-run is the default in the CLI and in every MCP tool.
@@ -20,7 +20,7 @@ git clone https://github.com/vivekkushalch/safe-ftp-mcp.git
 cd safe-ftp-mcp
 uv sync
 uv run pytest
-uv run safe-ftp-deploy --help
+uv run safe-ftp --help
 ```
 
 ## Making a change

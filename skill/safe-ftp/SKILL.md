@@ -1,9 +1,9 @@
 ---
-name: safe-ftp-deploy
-description: Use when deploying, downloading, or checking files on FTP/FTPS shared hosting (e.g. Hostinger) via the safe-ftp-deploy tool. Trigger on requests to deploy/upload/publish a file or folder to an FTP site, download files from one, check drift/deploy status, list a remote directory, or provision a new FTP site profile.
+name: safe-ftp
+description: Use when deploying, downloading, or checking files on FTP/FTPS shared hosting (e.g. Hostinger) via the safe-ftp tool. Trigger on requests to deploy/upload/publish a file or folder to an FTP site, download files from one, check drift/deploy status, list a remote directory, or provision a new FTP site profile.
 ---
 
-# safe-ftp-deploy
+# safe-ftp
 
 A safety-first FTP/FTPS deploy tool, built specifically to be handed to an
 AI agent. It enforces its own safety rules regardless of what you ask it to
@@ -20,7 +20,7 @@ not to work around the guardrails.
 
 ## How to reach it
 
-**Preferred: MCP tools**, if `safe-ftp-deploy mcp` is configured as an MCP
+**Preferred: MCP tools**, if `safe-ftp mcp` is configured as an MCP
 server in this session. Eight tools, all returning a `summary_markdown`
 field — relay that directly to the user instead of composing your own
 summary from the raw fields:
@@ -46,7 +46,7 @@ message when there's nothing meaningful to say; an empty one is fine.
 `--json` so you get structured output instead of having to scrape text:
 
 ```bash
-safe-ftp-deploy deploy --local ./index.php --remote /public_html/index.php --json
+safe-ftp deploy --local ./index.php --remote /public_html/index.php --json
 ```
 
 Either way, `--name`/`name` (which site) is usually omittable — it defaults
@@ -83,7 +83,7 @@ project's default.
    whitelist, that's a deliberate restriction set by the human who ran
    `setup_site` — ask them, don't work around it.
 6. **Don't collect FTP passwords in chat.** If no site is configured,
-   tell the user to run `safe-ftp-deploy setup-site --name <site>` in
+   tell the user to run `safe-ftp setup-site --name <site>` in
    their own terminal, or to point it at a FileZilla export with
    `--from-filezilla`. Use the `setup_site` tool only when the user has
    deliberately given you every value, and never invent placeholders.

@@ -1,6 +1,6 @@
 # Security Policy
 
-Safe FTP Deploy stores FTP credentials and is meant to be driven by AI agents, so security reports are taken seriously.
+Safe FTP stores FTP credentials and is meant to be driven by AI agents, so security reports are taken seriously.
 
 ## Supported versions
 

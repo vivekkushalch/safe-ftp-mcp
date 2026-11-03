@@ -52,12 +52,12 @@
   <!-- front ends -->
   <rect class="front" x="100" y="100" width="260" height="66" rx="8"/>
   <text class="title" x="230" y="126" text-anchor="middle">CLI</text>
-  <text class="code" x="230" y="146" text-anchor="middle">safe-ftp-deploy deploy ...</text>
+  <text class="code" x="230" y="146" text-anchor="middle">safe-ftp deploy ...</text>
   <text class="label" x="230" y="160" text-anchor="middle">safe_ftp.py</text>
 
   <rect class="front" x="540" y="100" width="260" height="66" rx="8"/>
   <text class="title" x="670" y="126" text-anchor="middle">MCP server</text>
-  <text class="code" x="670" y="146" text-anchor="middle">safe-ftp-deploy mcp  (stdio, 8 tools)</text>
+  <text class="code" x="670" y="146" text-anchor="middle">safe-ftp mcp  (stdio, 8 tools)</text>
   <text class="label" x="670" y="160" text-anchor="middle">safe_ftp_mcp.py</text>
 
   <line class="line" x1="230" y1="166" x2="230" y2="204" marker-end="url(#arrow)"/>
@@ -101,5 +101,5 @@
   <text class="code" x="670" y="426" text-anchor="middle">sites.enc  state.json  history.json</text>
 
   <!-- install note -->
-  <text class="label" x="450" y="468" text-anchor="middle">safe-ftp-deploy install (safe_ftp_install.py) writes the MCP entry and agent guidance into your agent's config files.</text>
+  <text class="label" x="450" y="468" text-anchor="middle">safe-ftp install (safe_ftp_install.py) writes the MCP entry and agent guidance into your agent's config files.</text>
 </svg>
