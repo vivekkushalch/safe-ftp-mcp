@@ -5,13 +5,14 @@
 **FTP deploys you can hand to an AI agent without losing sleep.**<br>
 Drift detection · no-delete guarantee · dry-run by default · MCP server included
 
+[![CI](https://github.com/vivekkushalch/safe_ftp/actions/workflows/ci.yml/badge.svg)](https://github.com/vivekkushalch/safe_ftp/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![uv](https://img.shields.io/badge/uv-compatible-green.svg)](https://docs.astral.sh/uv/)
 [![MCP](https://img.shields.io/badge/MCP-server-8A2BE2.svg)](https://modelcontextprotocol.io)
 [![Platforms](https://img.shields.io/badge/platform-windows%20%7C%20macos%20%7C%20linux-lightgrey.svg)](#installation)
 
-[Quick start](#quick-start) · [Features](#features) · [Usage](#usage) · [AI agents](#ai-agent-integration) · [Safety model](#safety-model) · [Contributing](#contributing)
+[Quick start](#quick-start) · [Features](#features) · [Usage](#usage) · [AI agents](#ai-agent-integration) · [Safety model](#safety-model) · [FAQ](#faq) · [Contributing](#contributing)
 
 </div>
 
@@ -33,6 +34,17 @@ then upload local './index.php' as '/public_html/index.php'. Re-run with --execu
 - Backup: /public_html/index_<timestamp>.php
 ```
 
+## Why not just use FileZilla or raw FTP?
+
+| | Plain FTP client / raw FTP MCP | Safe FTP Deploy |
+|---|---|---|
+| Can delete remote files | Yes | **No**, there is no delete code path |
+| Overwrites a file someone edited on the server | Silently | **Refuses** (drift detection) |
+| Default behavior | Writes immediately | **Dry-run** until `--execute` |
+| Confirms the upload is intact | Rarely | Re-downloads and compares hashes |
+| Scope of what an agent can touch | Whole account | Only whitelisted directories |
+| Credentials | Often plain text | Encrypted at rest |
+
 ## Features
 
 | | |
@@ -43,6 +55,7 @@ then upload local './index.php' as '/public_html/index.php'. Re-run with --execu
 | ✅ **Post-upload verification** | Re-downloads the file and compares hashes. |
 | 📁 **Directory whitelist** | Limit which remote folders can ever be touched. |
 | 🔐 **Encrypted credentials** | Fernet (AES) with a PBKDF2-SHA256 key, 480k iterations. |
+| 🔒 **Verified TLS** | FTPS certificates and hostnames are checked by default. |
 | 🕒 **Timestamped backups** | `DDMMYY_HHMMSS_microseconds`, so names never collide. |
 | 📜 **Deploy history** | Attach notes with `-m` and review them later. |
 | 🤖 **MCP server** | Eight tools, one-command install for Claude Code, Cursor, Windsurf, OpenCode and Antigravity. |
@@ -123,6 +136,17 @@ safe-ftp-deploy setup-site --name mysite --non-interactive \
   --host ftp.example.com --port 21 --username myuser \
   --use-tls --allowed-dirs "/public_html/,/public_html/blog/"
 ```
+
+### TLS and certificates
+
+FTPS connections verify the server certificate and hostname by default. If your host uses a self-signed or mismatched certificate and you trust it, opt out when saving the site:
+
+```bash
+safe-ftp-deploy setup-site --name mysite --insecure-tls
+```
+
+> [!WARNING]
+> `--insecure-tls` leaves the connection open to interception. Use it only on hosts you trust. It is not exposed through the MCP `setup_site` tool, so an agent can't turn verification off.
 
 Pass passwords through environment variables so they stay out of shell history:
 
@@ -259,6 +283,7 @@ safe-ftp-deploy deploy --local ./index.php --remote /public_html/index.php --jso
 | No bad uploads | Every upload is re-downloaded and hashed. |
 | No wandering | Writes outside the directory whitelist are rejected. |
 | No plaintext credentials | Encrypted at rest, decrypted only in memory. |
+| No unverified TLS | Certificates and hostnames are verified unless you pass `--insecure-tls` at setup. |
 
 ## Configuration
 
@@ -278,6 +303,27 @@ With it present you skip the password prompt and the `--name` flag in that folde
 
 The next `setup-site` run moves an old `.masterpwd` into `.ftpconfig` automatically. You can delete `.masterpwd` afterwards.
 
+## FAQ
+
+**Can it delete files?**
+No. There is no delete code path. Replaced files are renamed to timestamped backups, so you clean up old backups yourself.
+
+**What if the server file changed since my last deploy?**
+You get `drift_detected` and nothing is written. Review the server version, then re-run with `--force` if you're sure.
+
+**Does it work with SFTP?**
+No, FTP and FTPS only.
+
+**Where are my credentials stored?**
+Encrypted in `~/.safe_ftp_deploy/sites.enc`. The master password is never saved unless you keep the optional `.ftpconfig`.
+
+**Can an AI agent bypass the guardrails?**
+Not through the tool: dry-run, drift checks and the directory whitelist are enforced inside it, and `--insecure-tls` isn't exposed over MCP. An agent with shell access to your machine can still read your files, so treat `.ftpconfig` accordingly.
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for how to report a vulnerability privately.
+
 ## Development
 
 ```bash
@@ -296,15 +342,9 @@ uv run pytest
 
 ## Contributing
 
-Issues and pull requests are welcome.
+Issues and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) first.
 
-1. Fork the repo
-2. Create a branch: `git checkout -b feature/my-change`
-3. Add tests and run `uv run pytest`
-4. Commit and push
-5. Open a pull request
-
-Changes must keep the core promise: no delete path, no write without `--execute`.
+Changes must keep the core promise: no delete path, no write without `--execute`. See the [CHANGELOG](CHANGELOG.md) for release notes.
 
 ## License
 

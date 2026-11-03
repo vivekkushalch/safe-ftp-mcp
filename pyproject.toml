@@ -2,12 +2,35 @@
 name = "safe-ftp-deploy"
 version = "0.1.0"
 description = "Safety-first FTP deploy tool with drift detection and a no-delete guarantee, built to be safe to hand to an AI agent."
+readme = "README.md"
 requires-python = ">=3.10"
+license = {file = "LICENSE"}
+authors = [{name = "vivekkushalch"}]
+keywords = ["ftp", "ftps", "deploy", "mcp", "ai-agent", "safety", "drift-detection"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: File Transfer Protocol (FTP)",
+    "Topic :: Software Development :: Build Tools",
+]
 dependencies = [
     "cryptography>=41.0.0",
     "rich>=13.0.0",
     "mcp>=1.0.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/vivekkushalch/safe_ftp"
+Issues = "https://github.com/vivekkushalch/safe_ftp/issues"
+Changelog = "https://github.com/vivekkushalch/safe_ftp/blob/main/CHANGELOG.md"
 
 [project.scripts]
 safe-ftp-deploy = "safe_ftp:main"

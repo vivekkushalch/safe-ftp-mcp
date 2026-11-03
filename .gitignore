@@ -11,4 +11,3 @@ build/
 *.egg-info/
 .pytest_cache/
 .private/
-uv.lock

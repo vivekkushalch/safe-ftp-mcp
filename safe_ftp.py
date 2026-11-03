@@ -63,6 +63,7 @@ import getpass
 import hashlib
 import json
 import os
+import ssl
 import sys
 import tempfile
 import xml.etree.ElementTree as ET
@@ -335,9 +336,20 @@ def _append_history_entry(key: str, entry: dict):
 # ---------------------------------------------------------------------------
 # FTP helpers
 # ---------------------------------------------------------------------------
+def _tls_context(site: dict) -> ssl.SSLContext:
+    """Verify the server certificate and hostname unless the site was saved
+    with verify_tls=False (--insecure-tls). Sites saved before this setting
+    existed have no key and therefore verify."""
+    ctx = ssl.create_default_context()
+    if not site.get("verify_tls", True):
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+    return ctx
+
+
 def _connect(site: dict) -> FTP:
     if site.get("use_tls", True):
-        ftp = FTP_TLS()
+        ftp = FTP_TLS(context=_tls_context(site))
         ftp.connect(site["host"], int(site.get("port", 21)), timeout=30)
         ftp.login(site["username"], site["password"])
         ftp.prot_p()  # secure the data channel too
@@ -355,6 +367,12 @@ def _test_site_connection(site: dict) -> tuple:
     the save on failure."""
     try:
         ftp = _connect(site)
+    except ssl.SSLCertVerificationError as e:
+        return False, (
+            f"Could not connect: TLS certificate verification failed ({getattr(e, 'verify_message', None) or e}). "
+            "If this host uses a self-signed or mismatched certificate and you trust it, "
+            "re-run setup-site with --insecure-tls."
+        )
     except Exception as e:
         return False, f"Could not connect: {e}"
     try:
@@ -1119,6 +1137,7 @@ def cmd_setup_site(args):
         "username": username,
         "password": password,
         "use_tls": use_tls,
+        "verify_tls": not getattr(args, "insecure_tls", False),
         "allowed_remote_dirs": allowed_dirs,
     }
     _save_all_sites(sites, master_password)
@@ -1358,6 +1377,11 @@ def _build_parser() -> argparse.ArgumentParser:
                             help="Force FTPS (TLS). Mutually exclusive with --no-tls.")
     tls_group.add_argument("--no-tls", action="store_true",
                             help="Force plain FTP (no TLS). Mutually exclusive with --use-tls.")
+    p_setup.add_argument(
+        "--insecure-tls", action="store_true",
+        help="Skip TLS certificate verification (self-signed or mismatched certificate). "
+             "Only use on a host you trust; the connection is open to interception.",
+    )
     p_setup.add_argument("--allowed-dirs", help="Comma-separated list of allowed remote directories.")
     p_setup.set_defaults(func=cmd_setup_site)
 
